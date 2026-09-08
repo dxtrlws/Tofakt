@@ -1,0 +1,15 @@
+services:
+  watchlog:
+    image: ghcr.io/dxtrlws/watchlog:latest
+    build: .
+    ports:
+      - "9477:9477"
+    environment:
+      TZ: UTC
+      DATABASE_PATH: /data/watchlog.db
+    volumes:
+      - watchlog-data:/data
+    restart: unless-stopped
+
+volumes:
+  watchlog-data:

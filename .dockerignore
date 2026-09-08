@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+data
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.local
+docs/discovery-raw
+docs/screenshots
+coverage
+*.md
+!README.md
+design
+exports

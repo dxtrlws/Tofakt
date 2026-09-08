@@ -1,0 +1,13 @@
+{
+  "added": { "movies": 1, "episodes": 0 },
+  "not_found": {
+    "movies": [
+      {
+        "ids": { "tmdb": 999001 },
+        "watched_at": "2026-09-03T02:30:00.000Z"
+      }
+    ],
+    "episodes": [],
+    "shows": []
+  }
+}

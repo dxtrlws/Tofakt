@@ -1,0 +1,53 @@
+{
+  "items": [
+    {
+      "id": "play-inception",
+      "media_id": "media-inception",
+      "title": "Inception",
+      "media_type": "movie",
+      "progress_percent": 100,
+      "seconds_watched": 8880,
+      "started_at": "2026-09-04T02:00:00.000Z",
+      "ended_at": "2026-09-04T04:28:00.000Z",
+      "device_name": "Living Room"
+    },
+    {
+      "id": "play-silo",
+      "media_id": "media-silo",
+      "episode_id": "ep-silo-3-1",
+      "title": "Silo",
+      "media_type": "tv",
+      "season_number": 3,
+      "episode_number": 1,
+      "episode_title": "The Relic",
+      "progress_percent": 100,
+      "seconds_watched": 3600,
+      "started_at": "2026-09-01T05:24:00.000Z",
+      "ended_at": "2026-09-01T06:24:00.000Z",
+      "device_name": "Living Room"
+    },
+    {
+      "id": "play-unknown",
+      "media_id": "media-unknown",
+      "title": "Uncatalogued",
+      "media_type": "movie",
+      "progress_percent": 100,
+      "seconds_watched": 5400,
+      "started_at": "2026-09-03T01:00:00.000Z",
+      "ended_at": "2026-09-03T02:30:00.000Z",
+      "device_name": "Living Room"
+    },
+    {
+      "id": "play-ghost",
+      "media_id": "media-ghost",
+      "title": "Ghost Title",
+      "media_type": "movie",
+      "progress_percent": 100,
+      "seconds_watched": 5400,
+      "started_at": "2026-09-03T01:00:00.000Z",
+      "ended_at": "2026-09-03T02:30:00.000Z",
+      "device_name": "Living Room"
+    }
+  ],
+  "has_more": false
+}

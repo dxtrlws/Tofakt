@@ -1,0 +1,57 @@
+{
+  "media-inception": {
+    "id": "media-inception",
+    "library_id": "movies",
+    "media_type": "movie",
+    "title": "Inception",
+    "sort_title": "Inception",
+    "runtime_minutes": 148,
+    "tmdb_id": 27205,
+    "imdb_id": "tt1375666",
+    "year": 2010,
+    "genres": ["science-fiction", "action"]
+  },
+  "media-silo": {
+    "id": "media-silo",
+    "library_id": "tv",
+    "media_type": "tv",
+    "title": "Silo",
+    "runtime_minutes": 60,
+    "tmdb_id": 125988,
+    "year": 2023,
+    "genres": ["science-fiction", "drama"],
+    "seasons": [
+      {
+        "season_number": 3,
+        "episodes": [
+          {
+            "id": "ep-silo-3-1",
+            "episode_number": 1,
+            "title": "The Relic",
+            "runtime_minutes": 60,
+            "tmdb_episode_id": 4123456
+          }
+        ]
+      }
+    ]
+  },
+  "media-unknown": {
+    "id": "media-unknown",
+    "library_id": "movies",
+    "media_type": "movie",
+    "title": "Uncatalogued",
+    "runtime_minutes": 90,
+    "year": 2024,
+    "genres": []
+  },
+  "media-ghost": {
+    "id": "media-ghost",
+    "library_id": "movies",
+    "media_type": "movie",
+    "title": "Ghost Title",
+    "runtime_minutes": 90,
+    "tmdb_id": 999001,
+    "year": 2024,
+    "genres": []
+  }
+}

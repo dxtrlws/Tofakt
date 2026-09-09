@@ -89,7 +89,7 @@ async function tmdbArt(
   kind: "movie" | "tv",
   tmdbId: number,
 ): Promise<CachedArt> {
-  const cacheKey = `${kind}:${tmdbId}`;
+  const cacheKey = `org-logos-v1:${kind}:${tmdbId}`;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < TTL_MS) {
     return {

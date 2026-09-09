@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { PrefSelect } from "@/components/settings/pref-select";
 import {
@@ -64,11 +64,27 @@ export function DataSettingsForm({
     cancelImportAction,
     undefined,
   );
-  const [clearState, clearAction] = useActionState(clearSyncAction, undefined);
-  const [wipeState, wipeAction] = useActionState(wipeLocalAction, undefined);
-  const [forgetState, forgetAction] = useActionState(
+  const [clearState, clearAction, clearPending] = useActionState(
+    clearSyncAction,
+    undefined,
+  );
+  const [wipeState, wipeAction, wipePending] = useActionState(
+    wipeLocalAction,
+    undefined,
+  );
+  const [forgetState, forgetAction, forgetPending] = useActionState(
     forgetConnectionAction,
     undefined,
+  );
+
+  useCloseOnSuccess(danger === "clear", clearPending, clearState?.info, () =>
+    setDanger(null),
+  );
+  useCloseOnSuccess(danger === "wipe", wipePending, wipeState?.info, () =>
+    setDanger(null),
+  );
+  useCloseOnSuccess(danger === "forget", forgetPending, forgetState?.info, () =>
+    setDanger(null),
   );
 
   return (
@@ -212,6 +228,7 @@ export function DataSettingsForm({
       {danger === "clear" ? (
         <ConfirmModal
           action={clearAction}
+          error={clearState?.error}
           onClose={() => setDanger(null)}
           phrase="Clear sync records"
           title="Clear sync records"
@@ -223,6 +240,7 @@ export function DataSettingsForm({
       {danger === "wipe" ? (
         <ConfirmModal
           action={wipeAction}
+          error={wipeState?.error}
           onClose={() => setDanger(null)}
           phrase="Clear all local data"
           title="Clear all local data"
@@ -234,6 +252,7 @@ export function DataSettingsForm({
       {danger === "forget" ? (
         <ConfirmModal
           action={forgetAction}
+          error={forgetState?.error}
           extra={
             <label className="mt-4 block">
               <span className="text-meta leading-meta text-fg-muted">
@@ -314,6 +333,7 @@ function DangerRow({
 function ConfirmModal({
   action,
   children,
+  error,
   extra,
   onClose,
   phrase,
@@ -321,11 +341,15 @@ function ConfirmModal({
 }: {
   action: (form: FormData) => void;
   children: ReactNode;
+  error?: string;
   extra?: ReactNode;
   onClose: () => void;
   phrase: string;
   title: string;
 }) {
+  const [confirm, setConfirm] = useState("");
+  const matches = confirm.trim() === phrase;
+
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-scrim px-4">
       <div className="w-full max-w-[560px] rounded-lg border border-border bg-bg-raised p-8">
@@ -336,7 +360,14 @@ function ConfirmModal({
           {title}
         </p>
         <p className="mt-3 text-ui leading-ui text-fg-muted">{children}</p>
-        <form action={action}>
+        <form
+          action={action}
+          onSubmit={(event) => {
+            if (confirm.trim() !== phrase) {
+              event.preventDefault();
+            }
+          }}
+        >
           {extra}
           <label className="mt-4 block">
             <span className="text-meta leading-meta text-fg-muted">
@@ -346,18 +377,26 @@ function ConfirmModal({
               autoComplete="off"
               className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-ui text-fg outline-none"
               name="confirm"
+              onChange={(event) => setConfirm(event.target.value)}
               placeholder={phrase}
               required
+              value={confirm}
             />
           </label>
+          {confirm.length > 0 && !matches ? (
+            <p className="mt-2 text-meta leading-meta text-fg-muted">
+              Must match exactly, including capitalization.
+            </p>
+          ) : null}
+          <ModalError error={error} />
           <div className="mt-6 flex gap-2">
             <button className={secondary} onClick={onClose} type="button">
               Cancel
             </button>
             <PendingButton
               className={dangerBtn}
+              disabled={!matches}
               label={title}
-              onClick={onClose}
             />
           </div>
         </form>
@@ -368,24 +407,62 @@ function ConfirmModal({
 
 function PendingButton({
   className,
+  disabled,
   label,
-  onClick,
 }: {
   className: string;
+  disabled?: boolean;
   label: string;
-  onClick?: () => void;
 }) {
   const { pending } = useFormStatus();
   return (
     <button
-      className={className}
-      disabled={pending}
-      onClick={onClick}
+      className={`${className} disabled:cursor-not-allowed disabled:opacity-40`}
+      disabled={pending || disabled}
       type="submit"
     >
       {pending ? "Working…" : label}
     </button>
   );
+}
+
+function ModalError({ error }: { error?: string }) {
+  const { pending } = useFormStatus();
+  const sawPending = useRef(false);
+  if (pending) {
+    sawPending.current = true;
+  }
+  if (!sawPending.current || pending || !error) {
+    return null;
+  }
+  return (
+    <p className="mt-3 text-ui text-sync-failed" role="alert">
+      {error}
+    </p>
+  );
+}
+
+function useCloseOnSuccess(
+  open: boolean,
+  pending: boolean,
+  info: string | undefined,
+  onClose: () => void,
+) {
+  const submitted = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      submitted.current = false;
+      return;
+    }
+    if (pending) {
+      submitted.current = true;
+      return;
+    }
+    if (submitted.current && info) {
+      submitted.current = false;
+      onClose();
+    }
+  }, [info, onClose, open, pending]);
 }
 
 function Flash({ error, info }: { error?: string; info?: string }) {

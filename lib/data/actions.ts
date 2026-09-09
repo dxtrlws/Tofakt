@@ -23,6 +23,10 @@ async function guard() {
   return assertSameOrigin();
 }
 
+function confirmed(form: FormData, phrase: string): boolean {
+  return String(form.get("confirm") ?? "").trim() === phrase;
+}
+
 function refresh() {
   revalidatePath("/settings/data");
   revalidatePath("/settings/connections");
@@ -130,7 +134,7 @@ export async function clearSyncAction(
   if (blocked) {
     return blocked;
   }
-  if (String(form.get("confirm")) !== "Clear sync records") {
+  if (!confirmed(form, "Clear sync records")) {
     return { error: "Type Clear sync records to confirm." };
   }
   const count = clearSyncRecords();
@@ -148,7 +152,7 @@ export async function wipeLocalAction(
   if (blocked) {
     return blocked;
   }
-  if (String(form.get("confirm")) !== "Clear all local data") {
+  if (!confirmed(form, "Clear all local data")) {
     return { error: "Type Clear all local data to confirm." };
   }
   wipeLocalHistory();
@@ -166,7 +170,7 @@ export async function forgetConnectionAction(
   if (blocked) {
     return blocked;
   }
-  if (String(form.get("confirm")) !== "Forget a connection") {
+  if (!confirmed(form, "Forget a connection")) {
     return { error: "Type Forget a connection to confirm." };
   }
   const provider = String(form.get("provider"));

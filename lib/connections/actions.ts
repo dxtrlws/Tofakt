@@ -83,7 +83,16 @@ export async function saveTofaUrl(
     lastError: null,
   });
   await verifyTofa();
-  return { info: "Saved tofa URL." };
+  const row = getConnection("tofa");
+  if (row?.status === "down") {
+    return { error: row.lastError ?? "Could not reach that URL." };
+  }
+  if (!row?.accessTokenEnc) {
+    return {
+      info: "URL saved. Next: paste an API key or start device flow.",
+    };
+  }
+  return { info: "URL saved." };
 }
 
 export async function saveTofaApiKey(
@@ -105,7 +114,7 @@ export async function saveTofaApiKey(
     lastError: null,
   });
   await verifyTofa();
-  return { info: "API key saved." };
+  return { info: "API key saved. Test connection to confirm." };
 }
 
 export async function startTofaDeviceFlow(): Promise<ConnectionActionState> {
@@ -231,10 +240,18 @@ export async function testTofaConnection(): Promise<ConnectionActionState> {
   await refreshDueTokens();
   await verifyTofa();
   const row = getConnection("tofa");
-  if (row?.status === "ok") {
+  if (!row?.baseUrl) {
+    return { error: "Save a tofa URL first." };
+  }
+  if (!row.accessTokenEnc) {
+    return {
+      error: "Save an API key or finish device flow before testing.",
+    };
+  }
+  if (row.status === "ok") {
     return { info: "tofa connection is good." };
   }
-  return { error: row?.lastError ?? "Test failed." };
+  return { error: row.lastError ?? "Test failed." };
 }
 
 export async function saveTraktApp(
@@ -255,7 +272,9 @@ export async function saveTraktApp(
     lastError: null,
   });
   await verifyTrakt();
-  return { info: "Trakt app saved. Start device flow to connect." };
+  return {
+    info: "App credentials saved. Next: connect your Trakt account.",
+  };
 }
 
 export async function beginTraktDeviceFlow(
@@ -323,10 +342,18 @@ export async function testTraktConnection(): Promise<ConnectionActionState> {
   await refreshDueTokens();
   await verifyTrakt();
   const row = getConnection("trakt");
-  if (row?.status === "ok") {
+  if (!row?.extraEnc) {
+    return { error: "Save your Trakt client id and secret first." };
+  }
+  if (!row.accessTokenEnc) {
+    return {
+      error: "Authorize on Trakt first. Use Connect account, then test.",
+    };
+  }
+  if (row.status === "ok") {
     return { info: "Trakt connection is good." };
   }
-  return { error: row?.lastError ?? "Test failed." };
+  return { error: row.lastError ?? "Test failed." };
 }
 
 export async function saveTmdb(
@@ -352,7 +379,7 @@ export async function saveTmdb(
     lastError: null,
   });
   await verifyTmdb();
-  return { info: "TMDB settings saved." };
+  return { info: "API key saved. Test connection to confirm." };
 }
 
 export async function testTmdbConnection(): Promise<ConnectionActionState> {
@@ -362,10 +389,13 @@ export async function testTmdbConnection(): Promise<ConnectionActionState> {
   }
   await verifyTmdb();
   const row = getConnection("tmdb");
-  if (row?.status === "ok") {
+  if (!row?.accessTokenEnc) {
+    return { error: "Save a TMDB API key first." };
+  }
+  if (row.status === "ok") {
     return { info: "TMDB key is good." };
   }
-  return { error: row?.lastError ?? "Test failed." };
+  return { error: row.lastError ?? "Test failed." };
 }
 
 function persistDeviceTokens(

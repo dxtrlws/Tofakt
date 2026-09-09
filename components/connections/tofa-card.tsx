@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   type ConnectionActionState,
   saveTofaApiKey,
@@ -11,14 +11,16 @@ import {
 } from "@/lib/connections/actions";
 import type { PublicConnection } from "@/lib/connections/types";
 import { DeviceFlowPanel } from "./device-flow-panel";
+import {
+  fieldClass,
+  ghostBtn,
+  NextStep,
+  Note,
+  outlineBtn,
+  primaryBtn,
+  SavedSecret,
+} from "./setup";
 import { statusClass, statusDotClass } from "./status";
-
-const fieldClass =
-  "w-full rounded-md border border-border bg-bg-overlay px-3.5 py-2 text-ui text-fg outline-none";
-const ghostBtn =
-  "rounded-md px-3.5 py-2 text-ui font-medium leading-[18px] text-fg-muted";
-const outlineBtn =
-  "rounded-md border border-border bg-bg-overlay px-3.5 py-2 text-ui font-medium leading-[18px] text-fg";
 
 export function TofaCard({ connection }: { connection: PublicConnection }) {
   const router = useRouter();
@@ -33,7 +35,24 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
   const [replace, setReplace] = useState(!connection.hasSecret);
   const [flow, setFlow] = useState<ConnectionActionState["flow"]>();
   const [localError, setLocalError] = useState<string | undefined>();
+  const [localInfo, setLocalInfo] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (keyState?.info) {
+      setReplace(false);
+    }
+  }, [keyState?.info]);
+
+  useEffect(() => {
+    if (connection.hasSecret) {
+      setReplace(false);
+    }
+  }, [connection.hasSecret]);
+
+  const hasUrl = Boolean(connection.baseUrl);
+  const authorized = connection.hasSecret || Boolean(keyState?.info);
+  const showKeyForm = hasUrl && (!authorized || replace);
 
   const statusText =
     connection.status === "ok"
@@ -43,12 +62,6 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
         : connection.status === "down"
           ? "Unreachable"
           : "Not configured";
-
-  const detail = connection.hasSecret
-    ? `${connection.authMethod === "device" ? "Device flow" : "Admin API key"}${
-        connection.accountLabel ? ` · user ${connection.accountLabel}` : ""
-      }${connection.serverId ? " · claimed server" : ""}`
-    : "Paste a LAN or access URL, then an API key (recommended) or start device flow.";
 
   return (
     <section className="flex w-full flex-col gap-3 rounded-lg border border-border bg-bg-raised p-5">
@@ -65,98 +78,163 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
           {statusText}
         </p>
       </div>
-      <p className="text-ui leading-[18px] text-fg-muted">{detail}</p>
+      <p className="text-ui leading-[18px] text-fg-muted">
+        Two steps. Save the server URL, then an API key or device flow. Test
+        connection works only after one of those is stored.
+        {connection.accountLabel ? ` User ${connection.accountLabel}.` : ""}
+        {connection.serverId ? " Server claimed." : ""}
+      </p>
       {connection.lastError ? (
         <p className="text-ui text-sync-failed" role="alert">
           {connection.lastError}
         </p>
       ) : null}
-      <form action={saveUrl} className="flex flex-col gap-2 sm:flex-row">
-        <input
-          aria-label="tofa server URL"
-          className={fieldClass}
-          defaultValue={connection.baseUrl ?? ""}
-          name="url"
-          placeholder="http://192.168.1.50:33333"
-          required
-        />
-        <button className={outlineBtn} disabled={urlPending} type="submit">
-          {urlPending ? "Saving…" : "Save URL"}
-        </button>
+
+      <form action={saveUrl} className="flex flex-col gap-2">
+        <p className="text-meta leading-meta text-fg-muted">
+          Step 1 · Server URL
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            aria-label="tofa server URL"
+            className={fieldClass}
+            defaultValue={connection.baseUrl ?? ""}
+            name="url"
+            placeholder="http://192.168.1.50:33333"
+            required
+          />
+          <button className={outlineBtn} disabled={urlPending} type="submit">
+            {urlPending ? "Saving…" : "Save URL"}
+          </button>
+        </div>
       </form>
-      {urlState?.error ? (
-        <p className="text-ui text-sync-failed">{urlState.error}</p>
+      <Note error={urlState?.error} info={urlState?.info} />
+
+      {hasUrl && !authorized && connection.status !== "down" ? (
+        <NextStep>
+          URL saved. Next: paste an API key, or start device flow. The URL stays
+          in the field above. Test connection stays off until you authorize.
+        </NextStep>
       ) : null}
 
-      {replace ? (
-        <form action={saveKey} className="flex flex-col gap-2 sm:flex-row">
-          <input
-            aria-label="tofa API key"
-            autoComplete="off"
-            className={fieldClass}
-            name="apiKey"
-            placeholder="API key"
-            required
-            type="password"
-          />
-          <button className={outlineBtn} disabled={keyPending} type="submit">
-            {keyPending ? "Saving…" : "Save key"}
-          </button>
+      {showKeyForm ? (
+        <form action={saveKey} className="flex flex-col gap-2">
+          <p className="text-meta leading-meta text-fg-muted">
+            Step 2 · API key
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              aria-label="tofa API key"
+              autoComplete="off"
+              className={fieldClass}
+              name="apiKey"
+              placeholder="API key"
+              required
+              type="password"
+            />
+            <button className={primaryBtn} disabled={keyPending} type="submit">
+              {keyPending ? "Saving…" : "Save key"}
+            </button>
+          </div>
         </form>
-      ) : (
-        <p className="text-ui text-fg-muted">
-          {connection.authMethod === "device" ? "Access token" : "API key"} ·
-          ••••••••
+      ) : null}
+      {authorized && !replace ? (
+        <SavedSecret
+          label={
+            connection.authMethod === "device"
+              ? "Access token saved"
+              : "API key saved"
+          }
+        />
+      ) : null}
+      <Note error={keyState?.error} info={keyState?.info} />
+
+      {authorized && connection.status !== "ok" ? (
+        <p className="text-ui leading-[18px] text-fg-muted">
+          Credentials saved. Test connection to confirm.
         </p>
-      )}
-      {keyState?.error ? (
-        <p className="text-ui text-sync-failed">{keyState.error}</p>
       ) : null}
 
       <div className="flex flex-wrap gap-2">
+        {hasUrl && !authorized ? (
+          <button
+            className={outlineBtn}
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              setLocalError(undefined);
+              setLocalInfo(undefined);
+              void startTofaDeviceFlow().then((result) => {
+                setBusy(false);
+                setLocalError(result.error);
+                setLocalInfo(result.info);
+                setFlow(result.flow);
+              });
+            }}
+            type="button"
+          >
+            Device flow
+          </button>
+        ) : null}
         <button
-          className={outlineBtn}
-          disabled={busy}
+          className={authorized ? primaryBtn : outlineBtn}
+          disabled={busy || !authorized}
           onClick={() => {
             setBusy(true);
+            setLocalError(undefined);
+            setLocalInfo(undefined);
             void testTofaConnection().then((result) => {
               setBusy(false);
               setLocalError(result.error);
+              setLocalInfo(result.info);
               router.refresh();
             });
           }}
+          title={
+            authorized
+              ? undefined
+              : "Save an API key or finish device flow before testing."
+          }
           type="button"
         >
-          Test connection
+          {busy ? "Testing…" : "Test connection"}
         </button>
-        {connection.hasSecret ? (
+        {authorized ? (
           <button
             className={ghostBtn}
-            onClick={() => setReplace((v) => !v)}
+            onClick={() => setReplace((value) => !value)}
             type="button"
           >
             {replace ? "Cancel replace" : "Replace key"}
           </button>
         ) : null}
-        <button
-          className={ghostBtn}
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            void startTofaDeviceFlow().then((result) => {
-              setBusy(false);
-              setLocalError(result.error);
-              setFlow(result.flow);
-            });
-          }}
-          type="button"
-        >
-          Device flow
-        </button>
+        {authorized ? (
+          <button
+            className={ghostBtn}
+            disabled={busy || !hasUrl}
+            onClick={() => {
+              setBusy(true);
+              setLocalError(undefined);
+              setLocalInfo(undefined);
+              void startTofaDeviceFlow().then((result) => {
+                setBusy(false);
+                setLocalError(result.error);
+                setLocalInfo(result.info);
+                setFlow(result.flow);
+              });
+            }}
+            type="button"
+          >
+            {connection.authMethod === "device" ? "Re-auth" : "Device flow"}
+          </button>
+        ) : null}
       </div>
-      {localError ? (
-        <p className="text-ui text-sync-failed">{localError}</p>
+      {hasUrl && !authorized ? (
+        <p className="text-meta leading-meta text-fg-muted">
+          Test connection is available after an API key or device flow.
+        </p>
       ) : null}
+      <Note error={localError} info={localInfo} />
       {flow ? (
         <DeviceFlowPanel
           flow={flow}

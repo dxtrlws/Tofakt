@@ -10,14 +10,16 @@ import {
 } from "@/lib/connections/actions";
 import type { PublicConnection } from "@/lib/connections/types";
 import { DeviceFlowPanel } from "./device-flow-panel";
+import {
+  fieldClass,
+  ghostBtn,
+  NextStep,
+  Note,
+  outlineBtn,
+  primaryBtn,
+  SavedSecret,
+} from "./setup";
 import { statusClass, statusDotClass } from "./status";
-
-const fieldClass =
-  "w-full rounded-md border border-border bg-bg-overlay px-3.5 py-2 text-ui text-fg outline-none";
-const ghostBtn =
-  "rounded-md px-3.5 py-2 text-ui font-medium leading-[18px] text-fg-muted";
-const outlineBtn =
-  "rounded-md border border-border bg-bg-overlay px-3.5 py-2 text-ui font-medium leading-[18px] text-fg";
 
 export function TraktCard({
   connection,
@@ -38,7 +40,14 @@ export function TraktCard({
   const [replace, setReplace] = useState(!connection.hasClientCredentials);
   const [flow, setFlow] = useState<ConnectionActionState["flow"]>();
   const [localError, setLocalError] = useState<string | undefined>();
+  const [localInfo, setLocalInfo] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (appState?.info) {
+      setReplace(false);
+    }
+  }, [appState?.info]);
 
   useEffect(() => {
     if (flowState?.flow) {
@@ -47,6 +56,10 @@ export function TraktCard({
   }, [flowState]);
 
   const shown = flow ?? pending;
+  const credentialsSaved =
+    connection.hasClientCredentials || Boolean(appState?.info);
+  const authorized = connection.hasSecret;
+  const showCredentialForm = !credentialsSaved || replace;
 
   const statusText =
     connection.status === "ok"
@@ -58,7 +71,7 @@ export function TraktCard({
           : "Not configured";
 
   const expiry = connection.expiresAt
-    ? ` · token expires ${new Date(connection.expiresAt).toLocaleDateString()}`
+    ? ` Token expires ${new Date(connection.expiresAt).toLocaleDateString()}.`
     : "";
 
   return (
@@ -77,7 +90,7 @@ export function TraktCard({
         </p>
       </div>
       <p className="text-ui leading-[18px] text-fg-muted">
-        Create your own app at{" "}
+        Two steps. Save the client ID and secret from your own app at{" "}
         <a
           className="text-accent underline underline-offset-2"
           href="https://trakt.tv/oauth/applications"
@@ -86,9 +99,8 @@ export function TraktCard({
         >
           trakt.tv/oauth/applications
         </a>
-        . Watchlog cannot ship a shared client id. Device flow connects that app
-        to your account
-        {expiry}.
+        , then authorize that app on Trakt. Test connection works only after
+        authorization.{expiry}
       </p>
       {connection.lastError ? (
         <p className="text-ui text-sync-failed" role="alert">
@@ -96,8 +108,11 @@ export function TraktCard({
         </p>
       ) : null}
 
-      {replace ? (
+      {showCredentialForm ? (
         <form action={saveApp} className="flex flex-col gap-2">
+          <p className="text-meta leading-meta text-fg-muted">
+            Step 1 · App credentials
+          </p>
           <input
             aria-label="Trakt client ID"
             autoComplete="off"
@@ -116,61 +131,91 @@ export function TraktCard({
             required
             type="password"
           />
-          <button className={outlineBtn} disabled={appPending} type="submit">
+          <button className={primaryBtn} disabled={appPending} type="submit">
             {appPending ? "Saving…" : "Save app"}
           </button>
         </form>
       ) : (
-        <p className="text-ui text-fg-muted">Own app credentials · ••••••••</p>
+        <SavedSecret label="Client ID and secret saved" />
       )}
-      {appState?.error ? (
-        <p className="text-ui text-sync-failed">{appState.error}</p>
+      <Note error={appState?.error} info={appState?.info} />
+
+      {credentialsSaved && !authorized ? (
+        <NextStep>
+          Next: Connect account and approve Watchlog on trakt.tv. The saved
+          credentials stay here. Test connection stays off until Trakt approves
+          the app.
+        </NextStep>
+      ) : null}
+      {authorized && connection.status !== "ok" ? (
+        <p className="text-ui leading-[18px] text-fg-muted">
+          Account authorized. Test connection to confirm, or re-auth if the
+          token expires.
+        </p>
       ) : null}
 
       <div className="flex flex-wrap gap-2">
+        {credentialsSaved && !authorized ? (
+          <form action={beginFlow}>
+            <button
+              className={primaryBtn}
+              disabled={busy || flowPending || appPending}
+              type="submit"
+            >
+              {flowPending ? "Starting…" : "Connect account"}
+            </button>
+          </form>
+        ) : null}
         <button
           className={outlineBtn}
-          disabled={busy}
+          disabled={busy || !authorized}
           onClick={() => {
             setBusy(true);
+            setLocalError(undefined);
+            setLocalInfo(undefined);
             void testTraktConnection().then((result) => {
               setBusy(false);
               setLocalError(result.error);
+              setLocalInfo(result.info);
               router.refresh();
             });
           }}
+          title={
+            authorized
+              ? undefined
+              : "Authorize on Trakt before testing this connection."
+          }
           type="button"
         >
-          Test connection
+          {busy ? "Testing…" : "Test connection"}
         </button>
-        <form action={beginFlow}>
-          <button
-            className={outlineBtn}
-            disabled={busy || flowPending || appPending}
-            type="submit"
-          >
-            {flowPending
-              ? "Starting…"
-              : connection.hasSecret
-                ? "Re-auth"
-                : "Connect account"}
-          </button>
-        </form>
-        {connection.hasClientCredentials ? (
+        {authorized ? (
+          <form action={beginFlow}>
+            <button
+              className={outlineBtn}
+              disabled={busy || flowPending || appPending}
+              type="submit"
+            >
+              {flowPending ? "Starting…" : "Re-auth"}
+            </button>
+          </form>
+        ) : null}
+        {credentialsSaved ? (
           <button
             className={ghostBtn}
-            onClick={() => setReplace((v) => !v)}
+            onClick={() => setReplace((value) => !value)}
             type="button"
           >
             {replace ? "Cancel replace" : "Replace app"}
           </button>
         ) : null}
       </div>
-      {localError || flowState?.error ? (
-        <p className="text-ui text-sync-failed" role="alert">
-          {localError ?? flowState?.error}
+      {credentialsSaved && !authorized ? (
+        <p className="text-meta leading-meta text-fg-muted">
+          Test connection is available after you authorize.
         </p>
       ) : null}
+      <Note error={localError ?? flowState?.error} info={localInfo} />
       {shown ? (
         <DeviceFlowPanel
           flow={shown}

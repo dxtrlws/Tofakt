@@ -48,6 +48,9 @@ export function DeviceFlowPanel({
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border bg-bg-overlay p-4">
+      <p className="text-ui leading-[18px] text-fg">
+        Open the link and approve this app. This page waits until that finishes.
+      </p>
       <p className="font-headline text-title-sm font-semibold tracking-title-sm">
         {flow.userCode}
       </p>

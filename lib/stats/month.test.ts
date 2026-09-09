@@ -115,6 +115,11 @@ describe("monthReviewFromPlays", () => {
     expect(review.tvGenres[0]?.name).toBe("Drama");
     expect(review.tvGenres[0]?.plays).toBe(1);
     expect(review.tvGenres[0]?.caption).toBe("1 show");
+    expect(review.tvGenreWatch.most).toEqual({ name: "Drama", count: 1 });
+    expect(review.tvGenreWatch.least).toBeNull();
+    expect(review.tvGenreWatch.count).toBe(1);
+    expect(review.movieGenreWatch.most).toEqual({ name: "Drama", count: 1 });
+    expect(review.movieGenreWatch.count).toBe(1);
     expect(review.daily[0]).toBe(1);
     expect(review.daily[1]).toBe(2);
     expect(review.heatmapHours.flat().some((hours) => hours > 0)).toBe(true);

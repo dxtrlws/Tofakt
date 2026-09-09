@@ -5,18 +5,29 @@ const TINTS = ["bg-bg-overlay", "bg-bg-overlay-strong", "bg-[#12282E]"];
 export function YearTop10({
   title,
   items,
+  limit = 10,
+  headline = false,
 }: {
   title: string;
   items: RankedTitle[];
+  limit?: number;
+  headline?: boolean;
 }) {
   if (items.length === 0) {
     return null;
   }
-  const left = items.slice(0, 5);
-  const right = items.slice(5, 10);
+  const shown = items.slice(0, limit);
+  const left = shown.slice(0, 5);
+  const right = shown.slice(5, 10);
   return (
-    <section className="flex w-full flex-col gap-3 px-4 md:px-8 pt-10">
-      <h2 className="text-label font-semibold uppercase leading-label tracking-label text-fg-muted">
+    <section className="flex w-full flex-col gap-5 px-4 md:px-8 pt-10">
+      <h2
+        className={
+          headline
+            ? "whitespace-pre-line font-headline text-title font-semibold leading-[1.05] tracking-title text-fg md:text-stat md:leading-stat"
+            : "text-label font-semibold uppercase leading-label tracking-label text-fg-muted"
+        }
+      >
         {title}
       </h2>
       <div className="flex w-full flex-col gap-5 lg:flex-row">

@@ -1,7 +1,5 @@
 import type { MonthReview } from "@/lib/stats/month";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 export function MonthActivity({ review }: { review: MonthReview }) {
   const maxDay = Math.max(...review.daily, 1);
   return (
@@ -49,57 +47,6 @@ export function MonthActivity({ review }: { review: MonthReview }) {
           <p className="text-meta leading-meta text-fg-muted">per active day</p>
         </div>
       </div>
-      <div className="flex flex-col gap-3">
-        <h2 className="font-headline text-title-sm font-semibold leading-title-sm text-fg">
-          Hours by day
-        </h2>
-        <div
-          aria-label="Hours watched by weekday across weeks of the month"
-          className="overflow-x-auto"
-          role="img"
-        >
-          <div className="flex gap-3">
-            <div className="flex flex-col justify-between py-0.5 text-label text-fg-muted">
-              {WEEKDAYS.map((day) => (
-                <span key={day}>{day}</span>
-              ))}
-            </div>
-            <div className="flex gap-1">
-              {review.heatmapHours[0]?.map((_, week) => (
-                <div
-                  className="flex flex-col gap-1"
-                  key={`week-${String(week)}`}
-                >
-                  {WEEKDAYS.map((day) => {
-                    const row = WEEKDAYS.indexOf(day);
-                    const hours = review.heatmapHours[row]?.[week] ?? 0;
-                    return (
-                      <span
-                        className={`size-4 rounded-sm ${heatClass(hours)}`}
-                        key={`${day}-${String(week)}`}
-                        title={`${hours.toFixed(1)} hours`}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
     </section>
   );
-}
-
-function heatClass(hours: number): string {
-  if (hours <= 0) {
-    return "bg-bg-overlay";
-  }
-  if (hours < 1) {
-    return "bg-accent-dim";
-  }
-  if (hours < 3) {
-    return "bg-accent-muted";
-  }
-  return "bg-accent";
 }

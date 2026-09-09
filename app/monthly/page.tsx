@@ -4,11 +4,11 @@ import { MonthBreakdowns } from "@/components/monthly/breakdowns";
 import { MonthChrome } from "@/components/monthly/chrome";
 import { MonthEmpty } from "@/components/monthly/empty";
 import { MonthMomentCard } from "@/components/monthly/first-play";
+import { MonthGenreWatch } from "@/components/monthly/genres";
 import { MonthPosters } from "@/components/monthly/posters";
-import { MonthRanked } from "@/components/monthly/ranked";
+import { MonthTopFive } from "@/components/monthly/ranked";
 import { MonthRatings } from "@/components/monthly/ratings";
 import { MonthStats } from "@/components/monthly/stats";
-import { YearGenreChart } from "@/components/year/genre-bar";
 import { requireUser } from "@/lib/auth/require";
 import { timezone } from "@/lib/ingest/run";
 import { loadMonthReview } from "@/lib/stats/month";
@@ -52,18 +52,29 @@ export default async function MonthlyPage({
             </div>
             <MonthPosters name={review.name} posters={review.posters} />
             <MonthBreakdowns services={review.services} />
-            <YearGenreChart
-              caption="Unique shows by TMDB genre. A show counts in every genre it has, so shares can exceed 100%."
-              items={review.tvGenres}
-              title="TV genres"
+            <MonthTopFive
+              items={review.topShows}
+              title={"Most Watched\nTV Shows"}
             />
-            <YearGenreChart
-              caption="Unique films by TMDB genre. A film counts in every genre it has, so shares can exceed 100%."
+            <MonthGenreWatch
+              items={review.tvGenres}
+              title={"Most Watched\nShow Genres"}
+              unit="show"
+              watch={review.tvGenreWatch}
+              watermark="show genres"
+            />
+            <MonthTopFive
+              items={review.topMovies}
+              title={"Most Watched\nMovies"}
+            />
+            <MonthGenreWatch
               items={review.movieGenres}
-              title="Movie genres"
+              title={"Most Watched\nMovie Genres"}
+              unit="movie"
+              watch={review.movieGenreWatch}
+              watermark="movie genres"
             />
             <MonthActivity review={review} />
-            <MonthRanked review={review} />
             <MonthRatings review={review} />
             {review.last ? (
               <MonthMomentCard label="Last play" moment={review.last} />

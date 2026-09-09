@@ -10,7 +10,7 @@ import {
   traktCreds,
 } from "../home/trakt";
 import { timezone } from "../ingest/run";
-import { tmdbBackdropUrl } from "../tmdb/poster";
+import { tmdbBackdropUrl, tmdbImageUrl } from "../tmdb/poster";
 import { type TraktHistoryItem, traktHistoryInRange } from "../trakt/history";
 import {
   formatDelta,
@@ -46,9 +46,18 @@ export type MonthBar = {
   name: string;
   plays: number;
   seconds: number;
+  shows?: number;
+  movies?: number;
+  logoUrl?: string | null;
 };
 
 export type GenreBar = MonthBar & { caption: string };
+
+export type GenreWatch = {
+  most: { name: string; count: number } | null;
+  least: { name: string; count: number } | null;
+  count: number;
+};
 
 export type MonthRanked = {
   title: string;
@@ -90,6 +99,8 @@ export type MonthReview = {
   services: MonthBar[];
   movieGenres: GenreBar[];
   tvGenres: GenreBar[];
+  movieGenreWatch: GenreWatch;
+  tvGenreWatch: GenreWatch;
   daily: number[];
   hoursPerActiveDay: string;
   playsPerActiveDay: string;
@@ -259,6 +270,8 @@ export function monthReviewFromPlays(input: {
       services: [],
       movieGenres: [],
       tvGenres: [],
+      movieGenreWatch: emptyGenreWatch(),
+      tvGenreWatch: emptyGenreWatch(),
       daily: Array.from({ length: daysInMonth }, () => 0),
       hoursPerActiveDay: "0",
       playsPerActiveDay: "0",
@@ -297,6 +310,8 @@ export function monthReviewFromPlays(input: {
     services: serviceBars(plays),
     movieGenres: uniqueGenreBars(plays, "movie"),
     tvGenres: uniqueGenreBars(plays, "episode"),
+    movieGenreWatch: genreWatchFromPlays(plays, "movie"),
+    tvGenreWatch: genreWatchFromPlays(plays, "episode"),
     daily: dailyCounts(plays, timeZone, daysInMonth),
     hoursPerActiveDay: formatHours(seconds / Math.max(1, daySet.size)),
     playsPerActiveDay: (plays.length / Math.max(1, daySet.size)).toFixed(1),
@@ -591,27 +606,48 @@ export function serviceBars(
   }
   const counts = new Map<
     string,
-    { plays: number; seconds: number; titles: Set<string> }
+    {
+      plays: number;
+      seconds: number;
+      titles: Set<string>;
+      shows: Set<string>;
+      movies: Set<string>;
+      logoPath: string | null;
+    }
   >();
   for (const play of plays) {
-    const name = primaryProvider(byMedia.get(play.mediaItemId ?? "") ?? []);
-    const current = counts.get(name) ?? {
+    const provider = primaryProvider(byMedia.get(play.mediaItemId ?? "") ?? []);
+    const current = counts.get(provider.name) ?? {
       plays: 0,
       seconds: 0,
       titles: new Set<string>(),
+      shows: new Set<string>(),
+      movies: new Set<string>(),
+      logoPath: provider.logoPath,
     };
     current.plays += 1;
     current.seconds += play.seconds;
-    current.titles.add(
-      play.kind === "movie" ? play.title : (play.showTitle ?? play.title),
-    );
-    counts.set(name, current);
+    const title =
+      play.kind === "movie" ? play.title : (play.showTitle ?? play.title);
+    current.titles.add(title);
+    if (play.kind === "movie") {
+      current.movies.add(title);
+    } else {
+      current.shows.add(title);
+    }
+    if (!current.logoPath && provider.logoPath) {
+      current.logoPath = provider.logoPath;
+    }
+    counts.set(provider.name, current);
   }
   return [...counts.entries()]
     .map(([name, value]) => ({
       name,
       plays: uniqueTitles ? value.titles.size : value.plays,
       seconds: value.seconds,
+      shows: value.shows.size,
+      movies: value.movies.size,
+      logoUrl: tmdbImageUrl(value.logoPath, "w154"),
     }))
     .sort((a, b) => b.plays - a.plays || b.seconds - a.seconds);
 }
@@ -620,14 +656,19 @@ function primaryProvider(
   rows: Array<{
     providerName: string;
     monetizationType: string;
+    logoPath?: string | null;
   }>,
-): string {
+): { name: string; logoPath: string | null } {
   const order = ["flatrate", "ads", "free", "rent", "buy"];
   const ranked = [...rows].sort(
     (a, b) =>
       order.indexOf(a.monetizationType) - order.indexOf(b.monetizationType),
   );
-  return ranked[0]?.providerName ?? "Not currently streaming";
+  const row = ranked[0];
+  if (!row) {
+    return { name: "Not currently streaming", logoPath: null };
+  }
+  return { name: row.providerName, logoPath: row.logoPath ?? null };
 }
 
 export function genreBars(
@@ -653,11 +694,20 @@ export function genreBars(
 
 const NAMED_GENRES = 7;
 
-export function uniqueGenreBars(
+function emptyGenreWatch(): GenreWatch {
+  return { most: null, least: null, count: 0 };
+}
+
+type GenreTally = {
+  name: string;
+  titles: number;
+  seconds: number;
+};
+
+function tallyGenres(
   plays: MonthPlay[],
   kind: "movie" | "episode",
-): GenreBar[] {
-  const unit = kind === "movie" ? "films" : "shows";
+): GenreTally[] {
   const titles = new Map<string, { genres: Set<string>; seconds: number }>();
   for (const play of plays) {
     if (play.kind !== kind) {
@@ -683,28 +733,57 @@ export function uniqueGenreBars(
       genreSeconds.set(genre, (genreSeconds.get(genre) ?? 0) + row.seconds);
     }
   }
-  const sorted = [...genreTitles.entries()].sort(
-    (a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]),
-  );
+  return [...genreTitles.entries()]
+    .sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]))
+    .map(([name, set]) => ({
+      name,
+      titles: set.size,
+      seconds: genreSeconds.get(name) ?? 0,
+    }));
+}
+
+function genreWatchFromPlays(
+  plays: MonthPlay[],
+  kind: "movie" | "episode",
+): GenreWatch {
+  const tallies = tallyGenres(plays, kind);
+  const most = tallies[0];
+  const least = tallies[tallies.length - 1];
+  if (!most) {
+    return emptyGenreWatch();
+  }
+  return {
+    most: { name: most.name, count: most.titles },
+    least:
+      least && least.name !== most.name
+        ? { name: least.name, count: least.titles }
+        : null,
+    count: tallies.length,
+  };
+}
+
+export function uniqueGenreBars(
+  plays: MonthPlay[],
+  kind: "movie" | "episode",
+): GenreBar[] {
+  const unit = kind === "movie" ? "films" : "shows";
+  const sorted = tallyGenres(plays, kind);
   const named = sorted.slice(0, NAMED_GENRES);
   const rest = sorted.slice(NAMED_GENRES);
-  const bars: GenreBar[] = named.map(([name, set]) => ({
-    name,
-    plays: set.size,
-    seconds: genreSeconds.get(name) ?? 0,
-    caption: `${set.size} ${set.size === 1 ? unit.slice(0, -1) : unit}`,
+  const bars: GenreBar[] = named.map((row) => ({
+    name: row.name,
+    plays: row.titles,
+    seconds: row.seconds,
+    caption: `${row.titles} ${row.titles === 1 ? unit.slice(0, -1) : unit}`,
   }));
   if (rest.length > 0) {
     bars.push({
       name: "Other",
       plays: Math.max(
         1,
-        rest.reduce((sum, [, set]) => sum + set.size, 0),
+        rest.reduce((sum, row) => sum + row.titles, 0),
       ),
-      seconds: rest.reduce(
-        (sum, [name]) => sum + (genreSeconds.get(name) ?? 0),
-        0,
-      ),
+      seconds: rest.reduce((sum, row) => sum + row.seconds, 0),
       caption: `${rest.length} ${rest.length === 1 ? "category" : "categories"}`,
     });
   }

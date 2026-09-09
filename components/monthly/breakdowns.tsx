@@ -120,9 +120,13 @@ function ServiceRail({
 function ServiceMark({ item }: { item: MonthBar }) {
   if (item.logoUrl) {
     return (
-      <span className="size-8 shrink-0 overflow-hidden rounded-full bg-bg-overlay">
+      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-inverse p-1.5">
         {/* biome-ignore lint/performance/noImgElement: TMDB provider logo */}
-        <img alt="" className="size-full object-cover" src={item.logoUrl} />
+        <img
+          alt=""
+          className="max-h-full max-w-full object-contain"
+          src={item.logoUrl}
+        />
       </span>
     );
   }

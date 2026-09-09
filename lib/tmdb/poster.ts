@@ -2,11 +2,18 @@ import { tmdbDetails } from "./client";
 
 const TTL_MS = 24 * 60 * 60 * 1000;
 
+export type TmdbNamedOrg = {
+  name: string;
+  logoPath: string | null;
+};
+
 export type TmdbTitleMeta = {
   poster: string | null;
   backdrop: string | null;
   networks: string[];
   companies: string[];
+  networkOrgs: TmdbNamedOrg[];
+  companyOrgs: TmdbNamedOrg[];
 };
 
 type CachedArt = TmdbTitleMeta & { at: number };
@@ -49,8 +56,10 @@ export async function tmdbTitleMeta(
   return meta;
 }
 
-function namedList(rows: Array<{ name: string }> | undefined): string[] {
-  const names: string[] = [];
+function namedOrgs(
+  rows: Array<{ name: string; logo_path?: string | null }> | undefined,
+): TmdbNamedOrg[] {
+  const out: TmdbNamedOrg[] = [];
   const seen = new Set<string>();
   for (const row of rows ?? []) {
     const name = row.name.trim();
@@ -58,9 +67,21 @@ function namedList(rows: Array<{ name: string }> | undefined): string[] {
       continue;
     }
     seen.add(name);
-    names.push(name);
+    out.push({ name, logoPath: row.logo_path ?? null });
   }
-  return names;
+  return out;
+}
+
+function emptyMeta(at = Date.now()): CachedArt {
+  return {
+    poster: null,
+    backdrop: null,
+    networks: [],
+    companies: [],
+    networkOrgs: [],
+    companyOrgs: [],
+    at,
+  };
 }
 
 async function tmdbArt(
@@ -76,28 +97,28 @@ async function tmdbArt(
       backdrop: hit.backdrop,
       networks: hit.networks ?? [],
       companies: hit.companies ?? [],
+      networkOrgs: hit.networkOrgs ?? [],
+      companyOrgs: hit.companyOrgs ?? [],
       at: hit.at,
     };
   }
   try {
     const details = await tmdbDetails(key, kind, tmdbId);
+    const networkOrgs = namedOrgs(details.networks);
+    const companyOrgs = namedOrgs(details.production_companies);
     const entry = {
       poster: tmdbImageUrl(details.poster_path),
       backdrop: tmdbImageUrl(details.backdrop_path, "w1280"),
-      networks: namedList(details.networks),
-      companies: namedList(details.production_companies),
+      networks: networkOrgs.map((org) => org.name),
+      companies: companyOrgs.map((org) => org.name),
+      networkOrgs,
+      companyOrgs,
       at: Date.now(),
     };
     cache.set(cacheKey, entry);
     return entry;
   } catch {
-    const entry = {
-      poster: null,
-      backdrop: null,
-      networks: [],
-      companies: [],
-      at: Date.now(),
-    };
+    const entry = emptyMeta();
     cache.set(cacheKey, entry);
     return entry;
   }

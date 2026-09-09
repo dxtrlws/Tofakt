@@ -58,15 +58,18 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
             />
             <YearNamedBars
               caption="Original networks from TMDB. A show counts once, even if it moved networks mid-run."
+              countLabel="networks"
               items={review.tvNetworks}
-              title="TV networks"
-              unit="shows"
+              title={"TV\nNetworks"}
+              unit="show"
             />
             <YearNamedBars
               caption="TMDB providers at ingest, US region. Not where these were watched. Flatrate first; shows with no provider sit in Not currently streaming."
+              countLabel="services"
+              eyebrow="Availability on"
               items={review.tvServices}
-              title="Where these shows are available (estimated)"
-              unit="shows"
+              title={"Streaming\nServices"}
+              unit="show"
             />
             <YearKindStats stats={review.movies} />
             <YearTop10 items={review.topMovies} title="Top 10 watched movies" />
@@ -77,15 +80,18 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
             />
             <YearNamedBars
               caption="Production studios from TMDB. A film can count under more than one studio."
+              countLabel="studios"
               items={review.movieStudios}
-              title="Movie studios"
-              unit="films"
+              title={"Movie\nStudios"}
+              unit="film"
             />
             <YearNamedBars
               caption="TMDB providers at ingest, US region. Not where these were watched. Flatrate first; films with no provider sit in Not currently streaming."
+              countLabel="services"
+              eyebrow="Availability on"
               items={review.movieServices}
-              title="Where these movies are available (estimated)"
-              unit="films"
+              title={"Streaming\nServices"}
+              unit="movie"
             />
             {review.last ? (
               <MonthMomentCard label="Last play" moment={review.last} />

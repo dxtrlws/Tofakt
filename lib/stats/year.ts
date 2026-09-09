@@ -5,7 +5,7 @@ import { getDb } from "../db";
 import { ratings } from "../db/schema";
 import { logHomeTraktError, traktCreds } from "../home/trakt";
 import { timezone } from "../ingest/run";
-import { tmdbTitleMeta } from "../tmdb/poster";
+import { tmdbImageUrl, tmdbTitleMeta } from "../tmdb/poster";
 import { type TraktHistoryItem, traktHistoryInRange } from "../trakt/history";
 import {
   type GenreBar,
@@ -86,6 +86,7 @@ export type YearGenreBar = GenreBar;
 export type YearOrgs = {
   networksByTmdb: Map<number, string[]>;
   companiesByTmdb: Map<number, string[]>;
+  logoByName: Map<string, string | null>;
 };
 
 export type YearReview = {
@@ -263,11 +264,11 @@ export function yearReviewFromPlays(input: {
     tvServices: serviceBars(
       plays.filter((play) => play.kind === "episode"),
       true,
-    ).slice(0, 5),
+    ),
     movieServices: serviceBars(
       plays.filter((play) => play.kind === "movie"),
       true,
-    ).slice(0, 5),
+    ),
     movieGenres: uniqueGenreBars(plays, "movie"),
     tvGenres: uniqueGenreBars(plays, "episode"),
     tvNetworks: uniqueOrgBars(
@@ -275,12 +276,16 @@ export function yearReviewFromPlays(input: {
       "episode",
       (tmdbId) => input.orgs?.networksByTmdb.get(tmdbId) ?? [],
       "primary",
+      NAMED_ORGS,
+      input.orgs?.logoByName,
     ),
     movieStudios: uniqueOrgBars(
       plays,
       "movie",
       (tmdbId) => input.orgs?.companiesByTmdb.get(tmdbId) ?? [],
       "all",
+      NAMED_ORGS,
+      input.orgs?.logoByName,
     ),
     movies: kindStats(plays, "movie", year, timeZone, elapsed),
     tv: kindStats(plays, "episode", year, timeZone, elapsed),
@@ -933,6 +938,7 @@ export function uniqueOrgBars(
   orgsFor: (tmdbId: number) => string[],
   mode: "primary" | "all",
   limit = NAMED_ORGS,
+  logos?: Map<string, string | null>,
 ): MonthBar[] {
   const titles = new Map<string, { tmdbId: number | null; seconds: number }>();
   for (const play of plays) {
@@ -975,7 +981,14 @@ export function uniqueOrgBars(
     }
   }
   return [...counts.entries()]
-    .map(([name, value]) => ({ name, ...value }))
+    .map(([name, value]) => ({
+      name,
+      plays: value.plays,
+      seconds: value.seconds,
+      shows: kind === "episode" ? value.plays : 0,
+      movies: kind === "movie" ? value.plays : 0,
+      logoUrl: tmdbImageUrl(logos?.get(name), "w154"),
+    }))
     .sort((a, b) => b.plays - a.plays || b.seconds - a.seconds)
     .slice(0, limit);
 }
@@ -983,21 +996,40 @@ export function uniqueOrgBars(
 async function loadTitleOrgs(plays: MonthPlay[]): Promise<YearOrgs> {
   const networksByTmdb = new Map<number, string[]>();
   const companiesByTmdb = new Map<number, string[]>();
+  const logoByName = new Map<string, string | null>();
   const tmdb = getConnection("tmdb");
   const key = tmdb ? readAccessToken(tmdb) : null;
   if (!key) {
-    return { networksByTmdb, companiesByTmdb };
+    return { networksByTmdb, companiesByTmdb, logoByName };
   }
   const refs = uniqueTmdbRefs(plays);
   await mapPool(refs, 5, async (ref) => {
     const meta = await tmdbTitleMeta(key, ref.kind, ref.tmdbId);
     if (ref.kind === "tv") {
       networksByTmdb.set(ref.tmdbId, meta.networks);
+      for (const org of meta.networkOrgs) {
+        rememberLogo(logoByName, org.name, org.logoPath);
+      }
     } else {
       companiesByTmdb.set(ref.tmdbId, meta.companies);
+      for (const org of meta.companyOrgs) {
+        rememberLogo(logoByName, org.name, org.logoPath);
+      }
     }
   });
-  return { networksByTmdb, companiesByTmdb };
+  return { networksByTmdb, companiesByTmdb, logoByName };
+}
+
+function rememberLogo(
+  logos: Map<string, string | null>,
+  name: string,
+  logoPath: string | null,
+): void {
+  const existing = logos.get(name);
+  if (existing || (!logoPath && logos.has(name))) {
+    return;
+  }
+  logos.set(name, logoPath);
 }
 
 function uniqueTmdbRefs(plays: MonthPlay[]): Array<{

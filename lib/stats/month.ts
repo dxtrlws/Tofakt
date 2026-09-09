@@ -668,7 +668,26 @@ function primaryProvider(
   if (!row) {
     return { name: "Not currently streaming", logoPath: null };
   }
-  return { name: row.providerName, logoPath: row.logoPath ?? null };
+  return displayProvider(row.providerName, row.logoPath ?? null);
+}
+
+/** TMDB channel packages we show under the parent service brand. */
+const PROVIDER_DISPLAY: Record<string, { name: string; logoPath: string }> = {
+  "HBO Max Amazon Channel": {
+    name: "HBO Max",
+    logoPath: "/skypuy7SXuugIQeYg0IglmzoKaS.png",
+  },
+};
+
+export function displayProvider(
+  name: string,
+  logoPath: string | null,
+): { name: string; logoPath: string | null } {
+  const alias = PROVIDER_DISPLAY[name];
+  if (!alias) {
+    return { name, logoPath };
+  }
+  return { name: alias.name, logoPath: alias.logoPath };
 }
 
 export function genreBars(

@@ -257,8 +257,22 @@ describe("yearReviewFromPlays", () => {
         "primary",
       ),
     ).toEqual([
-      { name: "Amazon", plays: 1, seconds: 100 * 60 },
-      { name: "MGM+", plays: 1, seconds: 48 * 60 },
+      {
+        name: "Amazon",
+        plays: 1,
+        seconds: 100 * 60,
+        shows: 1,
+        movies: 0,
+        logoUrl: null,
+      },
+      {
+        name: "MGM+",
+        plays: 1,
+        seconds: 48 * 60,
+        shows: 1,
+        movies: 0,
+        logoUrl: null,
+      },
     ]);
     expect(
       uniqueOrgBars(
@@ -268,9 +282,30 @@ describe("yearReviewFromPlays", () => {
         "all",
       ),
     ).toEqual([
-      { name: "Legendary", plays: 1, seconds: 155 * 60 },
-      { name: "Warner Bros.", plays: 1, seconds: 155 * 60 },
-      { name: "Paramount", plays: 1, seconds: 116 * 60 },
+      {
+        name: "Legendary",
+        plays: 1,
+        seconds: 155 * 60,
+        shows: 0,
+        movies: 1,
+        logoUrl: null,
+      },
+      {
+        name: "Warner Bros.",
+        plays: 1,
+        seconds: 155 * 60,
+        shows: 0,
+        movies: 1,
+        logoUrl: null,
+      },
+      {
+        name: "Paramount",
+        plays: 1,
+        seconds: 116 * 60,
+        shows: 0,
+        movies: 1,
+        logoUrl: null,
+      },
     ]);
     const review = yearReviewFromPlays({
       year: 2026,
@@ -281,14 +316,23 @@ describe("yearReviewFromPlays", () => {
       prevPlays: 0,
       years: [2026],
       traktConnected: true,
-      orgs: { networksByTmdb, companiesByTmdb },
+      orgs: {
+        networksByTmdb,
+        companiesByTmdb,
+        logoByName: new Map([
+          ["Amazon", "/amazon.png"],
+          ["Legendary", "/legendary.png"],
+        ]),
+      },
     });
     expect(review.tvNetworks[0]?.name).toBe("Amazon");
+    expect(review.tvNetworks[0]?.logoUrl).toContain("/amazon.png");
     expect(review.movieStudios.map((bar) => bar.name)).toEqual([
       "Legendary",
       "Warner Bros.",
       "Paramount",
     ]);
+    expect(review.movieStudios[0]?.logoUrl).toContain("/legendary.png");
     expect(review.movieGenres[0]?.name).toBe("Sci-Fi");
   });
 });

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { monthReviewFromPlays, playsFromTraktItems } from "./month";
+import {
+  displayProvider,
+  monthReviewFromPlays,
+  playsFromTraktItems,
+} from "./month";
 
 describe("playsFromTraktItems", () => {
   it("maps movies and episodes with runtime hours and genres", () => {
@@ -123,5 +127,23 @@ describe("monthReviewFromPlays", () => {
     expect(review.daily[0]).toBe(1);
     expect(review.daily[1]).toBe(2);
     expect(review.heatmapHours.flat().some((hours) => hours > 0)).toBe(true);
+  });
+});
+
+describe("displayProvider", () => {
+  it("shows HBO Max Amazon Channel as HBO Max with the Max logo", () => {
+    expect(
+      displayProvider("HBO Max Amazon Channel", "/amazon-channel.png"),
+    ).toEqual({
+      name: "HBO Max",
+      logoPath: "/skypuy7SXuugIQeYg0IglmzoKaS.png",
+    });
+  });
+
+  it("leaves other providers unchanged", () => {
+    expect(displayProvider("Apple TV", "/apple.png")).toEqual({
+      name: "Apple TV",
+      logoPath: "/apple.png",
+    });
   });
 });

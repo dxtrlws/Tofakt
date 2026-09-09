@@ -14,6 +14,7 @@ const genreSchema = z.object({
 
 const namedSchema = z.object({
   name: z.string(),
+  logo_path: z.string().nullable().optional(),
 });
 
 const detailsSchema = z.object({

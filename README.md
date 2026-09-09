@@ -8,26 +8,8 @@ Self-hosted companion that records plays from **tofa**, syncs them to **Trakt**,
 
 ![Monthly review](docs/screenshots/monthly.png)
 
-## Run it
+## Published image
 
-Docker is how you host Watchlog. It builds the production app and serves it on port 9477. This is not a development server.
+The image is [`ghcr.io/dxtrlws/watchlog`](https://github.com/dxtrlws/Tofakt-/pkgs/container/watchlog).
 
-```bash
-docker compose up
-```
-
-Then open http://localhost:9477 and create the local admin. Connect tofa, Trakt, and TMDB under Settings.
-
-The published image is `ghcr.io/dxtrlws/watchlog`. See `docs/DEPLOY.md` for pulling that image, the `/data` volume, and reverse proxies.
-
-## Work on the source
-
-`npm run dev` is only for editing the app. It runs Next.js in development, with hot reload. Do not use it as the way to host Watchlog.
-
-```bash
-cp .env.example .env
-npm install
-npm run dev
-```
-
-The build brief for agents is `app-instructions.md`.
+How to run it is in [`docs/package/README.md`](docs/package/README.md). That file is what the package page shows. This README is for the repository.

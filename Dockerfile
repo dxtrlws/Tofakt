@@ -15,7 +15,9 @@ FROM node:22-alpine AS runner
 
 LABEL org.opencontainers.image.title="Watchlog" \
   org.opencontainers.image.description="Records plays from tofa, syncs them to Trakt, and builds monthly and yearly reviews." \
-  org.opencontainers.image.source="https://github.com/dxtrlws/Tofakt-"
+  org.opencontainers.image.url="https://github.com/dxtrlws/Tofakt-" \
+  org.opencontainers.image.documentation="https://github.com/dxtrlws/Tofakt-/tree/main/docs/package" \
+  org.opencontainers.image.source="https://github.com/dxtrlws/Tofakt-/tree/main/docs/package"
 
 # node:alpine already provides uid/gid 1000 as "node". The entrypoint
 # drops to PUID/PGID (default 1000); do not recreate that id here.

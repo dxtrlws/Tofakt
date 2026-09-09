@@ -31,6 +31,12 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
+          labels: |
+            org.opencontainers.image.title=Watchlog
+            org.opencontainers.image.description=Records plays from tofa, syncs them to Trakt, and builds monthly and yearly reviews.
+            org.opencontainers.image.url=https://github.com/dxtrlws/Tofakt-
+            org.opencontainers.image.documentation=https://github.com/dxtrlws/Tofakt-/tree/main/docs/package
+            org.opencontainers.image.source=https://github.com/dxtrlws/Tofakt-/tree/main/docs/package
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -38,6 +44,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: mode=max

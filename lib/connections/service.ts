@@ -1,5 +1,6 @@
 import { env } from "../env";
 import { logger } from "../logger";
+import { UpstreamError } from "../net/fetch-json";
 import { LOOPBACK_HINT, parseTofaBaseUrl } from "../net/ssrf";
 import { tmdbValidateKey } from "../tmdb/client";
 import {
@@ -139,8 +140,9 @@ export async function verifyTrakt(): Promise<void> {
       lastError: null,
     });
   } catch (err) {
+    const rateLimited = err instanceof UpstreamError && err.status === 429;
     upsertConnection("trakt", {
-      status: "down",
+      status: rateLimited ? "warn" : "down",
       lastError: messageOf(err),
     });
   }

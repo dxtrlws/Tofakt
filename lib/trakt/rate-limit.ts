@@ -1,6 +1,6 @@
 const WRITE_INTERVAL_MS = 1_000;
 const GET_WINDOW_MS = 5 * 60_000;
-const GET_BUDGET = 1000;
+const GET_BUDGET = 500;
 
 export type SleepFn = (ms: number) => Promise<void>;
 

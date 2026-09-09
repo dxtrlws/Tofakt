@@ -17,4 +17,28 @@ describe("TraktLimiter", () => {
     await limiter.waitWrite();
     expect(slept[0]).toBe(1000);
   });
+
+  it("caps GETs at 500 per 5 minutes", async () => {
+    let now = 0;
+    const slept: number[] = [];
+    const limiter = new TraktLimiter(
+      1000,
+      async (ms) => {
+        slept.push(ms);
+        now += ms;
+      },
+      () => now,
+    );
+    for (let i = 0; i < 500; i += 1) {
+      await limiter.waitGet();
+    }
+    expect(slept).toEqual([]);
+    expect(limiter.snapshot()).toEqual({
+      gets: 500,
+      budget: 500,
+      windowMinutes: 5,
+    });
+    await limiter.waitGet();
+    expect(slept[0]).toBe(5 * 60_000);
+  });
 });

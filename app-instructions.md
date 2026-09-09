@@ -258,7 +258,7 @@ For episodes, prefer a direct episode-level `tmdb`/`tvdb`/`imdb` id when tofa pr
 **Rate limits** (per user):
 
 - `POST`/`PUT`/`DELETE`: **1 call per second**
-- `GET`: 1000 calls per 5 minutes
+- `GET`: 500 calls per 5 minutes
 
 Implement a shared token-bucket limiter that all Trakt calls pass through, with separate buckets per verb class. On `429`, honor `Retry-After` and back off exponentially with jitter. Never parallelize Trakt writes.
 

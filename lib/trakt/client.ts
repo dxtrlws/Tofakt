@@ -114,6 +114,12 @@ export async function traktUsersSettings(
   const res = await fetchJson(`${traktApiBase()}/users/settings`, {
     headers: headers(clientId, accessToken),
   });
+  if (res.status === 429) {
+    throw new UpstreamError(
+      "Trakt rate-limited this check. It should clear in a few minutes.",
+      res.status,
+    );
+  }
   if (res.status >= 400) {
     throw new UpstreamError("Trakt rejected the token.", res.status);
   }

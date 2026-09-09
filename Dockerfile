@@ -17,13 +17,9 @@ LABEL org.opencontainers.image.title="Watchlog" \
   org.opencontainers.image.description="Records plays from tofa, syncs them to Trakt, and builds monthly and yearly reviews." \
   org.opencontainers.image.source="https://github.com/dxtrlws/Tofakt-"
 
-# node:alpine already ships uid/gid 1000 as "node". Replace it so the
-# runtime user is watchlog at the uid/gid the entrypoint defaults to.
-RUN apk add --no-cache tini su-exec libc6-compat \
-  && deluser --remove-home node \
-  && delgroup node \
-  && addgroup -g 1000 watchlog \
-  && adduser -S -u 1000 -G watchlog watchlog
+# node:alpine already provides uid/gid 1000 as "node". The entrypoint
+# drops to PUID/PGID (default 1000); do not recreate that id here.
+RUN apk add --no-cache tini su-exec libc6-compat
 
 WORKDIR /app
 ENV NODE_ENV=production
@@ -41,7 +37,7 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
   && rm -rf /app/data \
   && mkdir -p /data \
-  && chown -R watchlog:watchlog /app /data
+  && chown -R node:node /app /data
 
 EXPOSE 9477
 VOLUME ["/data"]

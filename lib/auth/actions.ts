@@ -38,6 +38,17 @@ function clientKey(headerList: Headers): string {
   );
 }
 
+// Client-supplied IP headers (x-forwarded-for/x-real-ip) can be spoofed by
+// the caller when there's no trusted reverse proxy in front of this app, so
+// an IP-only bucket can be reset at will by varying the header. Keying a
+// second bucket on the attempted username closes that gap: the username is
+// fixed for a given brute-force target, so this limit can't be rotated away.
+function usernameKey(formData: FormData): string {
+  const raw = formData.get("username");
+  const username = typeof raw === "string" ? raw.trim().slice(0, 64) : "";
+  return username || "unknown";
+}
+
 export async function setupAdmin(
   _prev: { error?: string } | undefined,
   formData: FormData,
@@ -52,8 +63,17 @@ export async function setupAdmin(
   }
 
   const headerList = await headers();
-  const limit = takeToken(`setup:${clientKey(headerList)}`, 5, 15 * 60 * 1000);
-  if (!limit.ok) {
+  const ipLimit = takeToken(
+    `setup:ip:${clientKey(headerList)}`,
+    5,
+    15 * 60 * 1000,
+  );
+  const userLimit = takeToken(
+    `setup:user:${usernameKey(formData)}`,
+    5,
+    15 * 60 * 1000,
+  );
+  if (!ipLimit.ok || !userLimit.ok) {
     return { error: "Too many attempts. Wait a few minutes." };
   }
 
@@ -112,8 +132,17 @@ export async function login(
   }
 
   const headerList = await headers();
-  const limit = takeToken(`login:${clientKey(headerList)}`, 5, 15 * 60 * 1000);
-  if (!limit.ok) {
+  const ipLimit = takeToken(
+    `login:ip:${clientKey(headerList)}`,
+    5,
+    15 * 60 * 1000,
+  );
+  const userLimit = takeToken(
+    `login:user:${usernameKey(formData)}`,
+    5,
+    15 * 60 * 1000,
+  );
+  if (!ipLimit.ok || !userLimit.ok) {
     return { error: "Too many attempts. Wait a few minutes." };
   }
 

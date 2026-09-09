@@ -17,7 +17,11 @@ LABEL org.opencontainers.image.title="Watchlog" \
   org.opencontainers.image.description="Records plays from tofa, syncs them to Trakt, and builds monthly and yearly reviews." \
   org.opencontainers.image.source="https://github.com/dxtrlws/Tofakt-"
 
+# node:alpine already ships uid/gid 1000 as "node". Replace it so the
+# runtime user is watchlog at the uid/gid the entrypoint defaults to.
 RUN apk add --no-cache tini su-exec libc6-compat \
+  && deluser --remove-home node \
+  && delgroup node \
   && addgroup -g 1000 watchlog \
   && adduser -S -u 1000 -G watchlog watchlog
 

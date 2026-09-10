@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { SettingsTabs } from "@/components/settings-tabs";
-import { aboutFacts } from "@/lib/about";
+import { SettingsTabs } from "@/components/settings/settings-tabs";
+import { aboutFacts } from "@/lib/about/about";
 import { requireUser } from "@/lib/auth/require";
 
 export const dynamic = "force-dynamic";

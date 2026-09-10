@@ -1,4 +1,4 @@
-import { getSettingJson, setSettingJson } from "../settings";
+import { getSettingJson, setSettingJson } from "../data/settings";
 import {
   clampMinutes,
   RECONCILE_INTERVAL_MAX,

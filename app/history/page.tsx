@@ -1,8 +1,8 @@
-import { AppShell } from "@/components/app-shell";
 import { HistoryDayHeader } from "@/components/history/columns";
 import { HistoryFilters } from "@/components/history/filters";
 import { HistoryRowView } from "@/components/history/row";
 import { RunIngestButton } from "@/components/history/run-ingest-button";
+import { AppShell } from "@/components/layout/app-shell";
 import { requireUser } from "@/lib/auth/require";
 import {
   groupByDay,

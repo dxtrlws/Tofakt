@@ -1,7 +1,7 @@
 import { TmdbCard } from "@/components/connections/tmdb-card";
 import { TofaCard } from "@/components/connections/tofa-card";
 import { TraktCard } from "@/components/connections/trakt-card";
-import { SettingsTabs } from "@/components/settings-tabs";
+import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { getPublicConnections } from "@/lib/connections/actions";
 import { pendingFlowView } from "@/lib/connections/device-flow";
 

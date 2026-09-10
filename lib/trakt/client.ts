@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fetchJson, UpstreamError } from "../net/fetch-json";
-import { traktApiBase } from "../upstream";
+import { traktApiBase } from "../net/upstream";
 
 const deviceCodeSchema = z.object({
   device_code: z.string(),

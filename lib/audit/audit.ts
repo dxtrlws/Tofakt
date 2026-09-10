@@ -1,8 +1,8 @@
 import { desc } from "drizzle-orm";
-import { getDb, getSqlite } from "./db";
-import { auditLog } from "./db/schema";
-import { newId } from "./ids";
-import { logger } from "./logger";
+import { getDb, getSqlite } from "../db";
+import { auditLog } from "../db/schema";
+import { newId } from "../ids";
+import { logger } from "../logger";
 
 const MAX_AUDIT_ROWS = 1000;
 

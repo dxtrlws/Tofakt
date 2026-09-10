@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { writeAudit } from "../audit";
+import { writeAudit } from "../audit/audit";
 import { assertSameOrigin } from "../auth/csrf";
 import { requireUser } from "../auth/require";
 import { getDb } from "../db";

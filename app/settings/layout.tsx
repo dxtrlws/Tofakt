@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/components/layout/app-shell";
 import { requireUser } from "@/lib/auth/require";
 
 export const dynamic = "force-dynamic";

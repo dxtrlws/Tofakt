@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/app-shell";
 import { AttentionCard } from "@/components/home/attention";
 import { PosterCarousel } from "@/components/home/carousel";
 import { MonthCard } from "@/components/home/month-card";
@@ -6,6 +5,7 @@ import { HomePoller } from "@/components/home/poller";
 import { PosterCard } from "@/components/home/poster-card";
 import { StatusStrip } from "@/components/home/status-strip";
 import { UpcomingFilters } from "@/components/home/upcoming-filters";
+import { AppShell } from "@/components/layout/app-shell";
 import { requireUser } from "@/lib/auth/require";
 import { loadHomeDashboard } from "@/lib/home/query";
 import { parseUpcomingFilter } from "@/lib/home/upcoming";

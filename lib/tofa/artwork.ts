@@ -1,4 +1,4 @@
-import { getSettingJson, setSettingJson } from "../settings";
+import { getSettingJson, setSettingJson } from "../data/settings";
 import { tofaArtwork, tofaImageToken } from "./history";
 
 type CachedToken = {

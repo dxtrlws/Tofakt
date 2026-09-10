@@ -1,17 +1,17 @@
 import { and, eq } from "drizzle-orm";
-import { writeAudit } from "../audit";
+import { writeAudit } from "../audit/audit";
 import { refreshDueTokens } from "../connections/service";
 import {
   getConnection,
   parseExtra,
   readAccessToken,
 } from "../connections/store";
+import { getSettingJson, setSettingJson } from "../data/settings";
 import { getDb } from "../db";
 import { jobRuns, jobs, mediaItems } from "../db/schema";
 import { env } from "../env";
 import { newId } from "../ids";
 import { logger } from "../logger";
-import { getSettingJson, setSettingJson } from "../settings";
 import { getSyncSettings } from "../sync/settings";
 import { tmdbWatchProviders } from "../tmdb/client";
 import { tofaUsersMe } from "../tofa/client";

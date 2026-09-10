@@ -1,9 +1,9 @@
-import { writeAudit } from "../audit";
+import { writeAudit } from "../audit/audit";
 import { deleteConnection } from "../connections/store";
 import type { Provider } from "../connections/types";
 import { getDb, getSqlite } from "../db";
 import { mediaItems, syncRecords, watchEvents } from "../db/schema";
-import { setSettingJson } from "../settings";
+import { setSettingJson } from "./settings";
 
 export function clearSyncRecords(): number {
   const count = getDb()

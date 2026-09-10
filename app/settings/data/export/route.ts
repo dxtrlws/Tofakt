@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { writeAudit } from "@/lib/audit";
+import { writeAudit } from "@/lib/audit/audit";
 import { requireUser } from "@/lib/auth/require";
 import { buildHistoryFile, historyToCsv } from "@/lib/data/history-file";
 

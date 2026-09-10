@@ -1,5 +1,5 @@
-import { writeAudit } from "../audit";
-import { getSettingJson, setSettingJson } from "../settings";
+import { writeAudit } from "../audit/audit";
+import { getSettingJson, setSettingJson } from "./settings";
 
 export type WeekStart = "sunday" | "monday";
 

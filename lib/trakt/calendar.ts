@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fetchJson } from "../net/fetch-json";
-import { traktApiBase } from "../upstream";
+import { traktApiBase } from "../net/upstream";
 import { traktLimiter } from "./rate-limit";
 
 const idsSchema = z

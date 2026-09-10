@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, isNull, lte, or } from "drizzle-orm";
-import { writeAudit } from "../audit";
+import { writeAudit } from "../audit/audit";
 import {
   refreshDueTokens,
   refreshTraktConnection,
@@ -9,6 +9,7 @@ import {
   readAccessToken,
   readTraktAppSecrets,
 } from "../connections/store";
+import { getSettingJson, setSettingJson } from "../data/settings";
 import { getDb } from "../db";
 import {
   jobRuns,
@@ -19,7 +20,6 @@ import {
 } from "../db/schema";
 import { newId } from "../ids";
 import { logger } from "../logger";
-import { getSettingJson, setSettingJson } from "../settings";
 import { retryAfterMs, traktPostHistory } from "../trakt/history";
 import { MAX_SYNC_ATTEMPTS, nextAttemptAt, shouldRetryStatus } from "./backoff";
 import { matchSnapshot } from "./match";

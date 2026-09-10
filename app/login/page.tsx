@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { AuthForm } from "@/components/auth-form";
-import { AuthShell } from "@/components/auth-shell";
+import { AuthForm } from "@/components/auth/auth-form";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { login } from "@/lib/auth/actions";
 import { getSessionUser, needsSetup } from "@/lib/auth/session";
 

@@ -1,8 +1,12 @@
 import { CopyReport } from "@/components/settings/copy-report";
-import { SettingsTabs } from "@/components/settings-tabs";
-import { copyReport, jobStatusText } from "@/lib/about";
-import { formatStamp } from "@/lib/about-format";
-import { formatAuditDetail, formatAuditLabel, listAudit } from "@/lib/audit";
+import { SettingsTabs } from "@/components/settings/settings-tabs";
+import { copyReport, jobStatusText } from "@/lib/about/about";
+import { formatStamp } from "@/lib/about/about-format";
+import {
+  formatAuditDetail,
+  formatAuditLabel,
+  listAudit,
+} from "@/lib/audit/audit";
 import { requireUser } from "@/lib/auth/require";
 import { timezone } from "@/lib/ingest/run";
 

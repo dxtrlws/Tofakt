@@ -5,7 +5,6 @@ import { assertSameOrigin } from "../auth/csrf";
 import { requireUser } from "../auth/require";
 import { UpstreamError } from "../net/fetch-json";
 import { parseTofaBaseUrl } from "../net/ssrf";
-import { qrDataUrl } from "../qr";
 import { tofaPollDeviceToken, tofaStartDeviceCode } from "../tofa/client";
 import { traktPollDeviceToken, traktStartDeviceCode } from "../trakt/client";
 import {
@@ -16,6 +15,7 @@ import {
   shouldWait,
 } from "./device-flow";
 import { toPublic } from "./public";
+import { qrDataUrl } from "./qr";
 import {
   refreshDueTokens,
   seedConnectionsFromEnv,

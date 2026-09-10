@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fetchJson, UpstreamError } from "../net/fetch-json";
-import { tmdbApiOrigin } from "../upstream";
+import { tmdbApiOrigin } from "../net/upstream";
 
 const authSchema = z.object({
   success: z.boolean().optional(),

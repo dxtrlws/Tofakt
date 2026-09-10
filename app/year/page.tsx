@@ -1,4 +1,4 @@
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/components/layout/app-shell";
 import { MonthMomentCard } from "@/components/monthly/first-play";
 import { YearChrome } from "@/components/year/chrome";
 import { YearEmpty } from "@/components/year/empty";

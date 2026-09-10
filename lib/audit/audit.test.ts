@@ -3,15 +3,15 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as schema from "../db/schema";
 import { formatAuditLabel, listAudit, writeAudit } from "./audit";
-import * as schema from "./db/schema";
 
 const ctx = vi.hoisted(() => ({
   sqlite: null as InstanceType<typeof Database> | null,
   db: null as ReturnType<typeof drizzle<typeof schema>> | null,
 }));
 
-vi.mock("./db", () => ({
+vi.mock("../db", () => ({
   getDb: () => {
     if (!ctx.db) {
       throw new Error("test db not ready");
@@ -26,7 +26,7 @@ vi.mock("./db", () => ({
   },
 }));
 
-vi.mock("./logger", () => ({
+vi.mock("../logger", () => ({
   logger: {
     info: () => undefined,
     warn: () => undefined,

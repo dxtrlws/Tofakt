@@ -9,7 +9,7 @@ export async function register(): Promise<void> {
     return;
   }
   const { encryptionKey } = await import("./lib/crypto");
-  await import("./lib/boot");
+  await import("./lib/about/boot");
   const { runMigrations } = await import("./lib/db/migrate");
   encryptionKey();
   runMigrations();

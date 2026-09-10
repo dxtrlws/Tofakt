@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
-import { writeAudit } from "../audit";
+import { writeAudit } from "../audit/audit";
 import { getDb } from "../db";
 import { mediaItems, watchEvents } from "../db/schema";
 import { upsertMediaItem, upsertWatchEvent } from "../ingest/persist";
-import { getSettingJson, setSettingJson } from "../settings";
+import { getSettingJson, setSettingJson } from "./settings";
 
 export const MAX_IMPORT_EVENTS = 50_000;
 

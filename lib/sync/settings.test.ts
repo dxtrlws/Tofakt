@@ -3,7 +3,7 @@ import { getSyncSettings, saveSyncSettings } from "./settings";
 
 const store = vi.hoisted(() => new Map<string, unknown>());
 
-vi.mock("../settings", () => ({
+vi.mock("../data/settings", () => ({
   getSettingJson: (key: string) => store.get(key),
   setSettingJson: (key: string, value: unknown) => {
     if (value == null) {

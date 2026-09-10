@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
-import { AuthDisabledBanner } from "@/components/auth-disabled-banner";
+import { AuthDisabledBanner } from "@/components/auth/auth-disabled-banner";
 import { isAuthDisabled } from "@/lib/env";
 import "./globals.css";
 

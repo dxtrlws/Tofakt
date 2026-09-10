@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { settings } from "./db/schema";
+import { getDb } from "../db";
+import { settings } from "../db/schema";
 
 export function getSettingJson<T>(key: string): T | undefined {
   const row = getDb()

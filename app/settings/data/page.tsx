@@ -1,5 +1,5 @@
 import { DataSettingsForm } from "@/components/settings/data-form";
-import { SettingsTabs } from "@/components/settings-tabs";
+import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { requireUser } from "@/lib/auth/require";
 import { getConnection } from "@/lib/connections/store";
 import type { Provider } from "@/lib/connections/types";

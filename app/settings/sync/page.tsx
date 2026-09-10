@@ -1,5 +1,5 @@
+import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { SyncSettingsForm } from "@/components/settings/sync-form";
-import { SettingsTabs } from "@/components/settings-tabs";
 import { requireUser } from "@/lib/auth/require";
 import { getConnection } from "@/lib/connections/store";
 import { getIngestSettings } from "@/lib/ingest/run";

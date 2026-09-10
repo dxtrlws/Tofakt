@@ -3,7 +3,7 @@ import { getDataPrefs, isValidTimeZone, saveDataPrefs } from "./prefs";
 
 const store = vi.hoisted(() => new Map<string, unknown>());
 
-vi.mock("../settings", () => ({
+vi.mock("./settings", () => ({
   getSettingJson: (key: string) => store.get(key),
   setSettingJson: (key: string, value: unknown) => {
     if (value == null) {
@@ -14,7 +14,7 @@ vi.mock("../settings", () => ({
   },
 }));
 
-vi.mock("../audit", () => ({
+vi.mock("../audit/audit", () => ({
   writeAudit: () => undefined,
 }));
 

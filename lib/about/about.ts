@@ -1,16 +1,16 @@
 import { statSync } from "node:fs";
 import { desc, eq, isNotNull } from "drizzle-orm";
+import { formatAuditDetail, formatAuditLabel, listAudit } from "../audit/audit";
+import { getConnection, parseExtra } from "../connections/store";
+import { watchEventTotal } from "../data/danger";
+import { getDb, getSqlite, sqlitePath } from "../db";
+import { jobRuns, jobs } from "../db/schema";
+import { lastIngestStats, timezone } from "../ingest/run";
+import { lastSyncStats } from "../sync/run";
+import { getCircuit } from "../sync/settings";
+import { traktLimiter } from "../trakt/rate-limit";
 import { formatBytes, formatStamp, formatUptime } from "./about-format";
-import { formatAuditDetail, formatAuditLabel, listAudit } from "./audit";
 import { processStartedAt } from "./boot";
-import { getConnection, parseExtra } from "./connections/store";
-import { watchEventTotal } from "./data/danger";
-import { getDb, getSqlite, sqlitePath } from "./db";
-import { jobRuns, jobs } from "./db/schema";
-import { lastIngestStats, timezone } from "./ingest/run";
-import { lastSyncStats } from "./sync/run";
-import { getCircuit } from "./sync/settings";
-import { traktLimiter } from "./trakt/rate-limit";
 
 export type AboutFacts = {
   version: string;

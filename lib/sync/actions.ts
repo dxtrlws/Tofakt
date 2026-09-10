@@ -2,15 +2,15 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { writeAudit } from "../audit";
+import { writeAudit } from "../audit/audit";
 import { assertSameOrigin } from "../auth/csrf";
 import { requireUser } from "../auth/require";
 import { getConnection, readAccessToken } from "../connections/store";
+import { setSettingJson } from "../data/settings";
 import { getDb } from "../db";
 import { jobs, syncRecords } from "../db/schema";
 import { getIngestSettings } from "../ingest/run";
 import { restartScheduler } from "../scheduler";
-import { setSettingJson } from "../settings";
 import { tofaLibraries } from "../tofa/client";
 import {
   applyForwardCutoff,

@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { writeAudit } from "./audit";
+import { writeAudit } from "./audit/audit";
 import { getDb } from "./db";
 import { jobs } from "./db/schema";
 import { getIngestSettings, runIngest } from "./ingest/run";

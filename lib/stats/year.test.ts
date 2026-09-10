@@ -102,6 +102,11 @@ describe("yearReviewFromPlays", () => {
     expect(review.movies.plays).toBe(1);
     expect(review.tv.plays).toBe(11);
     expect(review.movieGenres[0]?.name).toBe("Horror");
+    expect(review.tvGenreWatch.most).toEqual({ name: "Drama", count: 3 });
+    expect(review.tvGenreWatch.least).toBeNull();
+    expect(review.tvGenreWatch.count).toBe(1);
+    expect(review.movieGenreWatch.most).toEqual({ name: "Horror", count: 1 });
+    expect(review.movieGenreWatch.count).toBe(1);
     expect(review.newShare).toBe("92%");
     expect(review.rewatchShare).toBe("8% rewatch");
     expect(review.topShows[0]?.title).toBe("FROM");
@@ -208,6 +213,9 @@ describe("yearReviewFromPlays", () => {
       "Other",
     ]);
     expect(review.movieGenres.at(-1)?.caption).toBe("3 categories");
+    expect(review.movieGenreWatch.most).toEqual({ name: "Action", count: 1 });
+    expect(review.movieGenreWatch.least).toEqual({ name: "Western", count: 1 });
+    expect(review.movieGenreWatch.count).toBe(10);
     expect(
       review.movieGenres.find((bar) => bar.name === "Sci-Fi"),
     ).toBeUndefined();

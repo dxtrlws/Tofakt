@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { MonthMomentCard } from "@/components/monthly/first-play";
+import { MonthGenreWatch } from "@/components/monthly/genres";
 import { YearChrome } from "@/components/year/chrome";
 import { YearEmpty } from "@/components/year/empty";
-import { YearGenreChart } from "@/components/year/genre-bar";
 import { YearKindStats } from "@/components/year/kind-stats";
 import { YearMonths } from "@/components/year/months";
 import { YearNamedBars } from "@/components/year/named-bars";
@@ -51,10 +51,12 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
             ) : null}
             <YearKindStats stats={review.tv} />
             <YearTop10 items={review.topShows} title="Top 10 watched shows" />
-            <YearGenreChart
-              caption="Unique shows by TMDB genre. A show counts in every genre it has, so shares can exceed 100%."
+            <MonthGenreWatch
               items={review.tvGenres}
-              title="TV genres"
+              title={"Most Watched\nShow Genres"}
+              unit="show"
+              watch={review.tvGenreWatch}
+              watermark="show genres"
             />
             <YearNamedBars
               caption="Original networks from TMDB. A show counts once, even if it moved networks mid-run."
@@ -73,10 +75,12 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
             />
             <YearKindStats stats={review.movies} />
             <YearTop10 items={review.topMovies} title="Top 10 watched movies" />
-            <YearGenreChart
-              caption="Unique films by TMDB genre. A film counts in every genre it has, so shares can exceed 100%."
+            <MonthGenreWatch
               items={review.movieGenres}
-              title="Movie genres"
+              title={"Most Watched\nMovie Genres"}
+              unit="movie"
+              watch={review.movieGenreWatch}
+              watermark="movie genres"
             />
             <YearNamedBars
               caption="Production studios from TMDB. A film can count under more than one studio."

@@ -9,6 +9,8 @@ import { tmdbImageUrl, tmdbTitleMeta } from "../tmdb/poster";
 import { type TraktHistoryItem, traktHistoryInRange } from "../trakt/history";
 import {
   type GenreBar,
+  type GenreWatch,
+  genreWatchFromPlays,
   hydrateMonthPlays,
   type MonthBar,
   type MonthMoment,
@@ -118,6 +120,8 @@ export type YearReview = {
   movieServices: MonthBar[];
   movieGenres: YearGenreBar[];
   tvGenres: YearGenreBar[];
+  movieGenreWatch: GenreWatch;
+  tvGenreWatch: GenreWatch;
   tvNetworks: MonthBar[];
   movieStudios: MonthBar[];
   movies: YearKindStats;
@@ -271,6 +275,8 @@ export function yearReviewFromPlays(input: {
     ),
     movieGenres: uniqueGenreBars(plays, "movie"),
     tvGenres: uniqueGenreBars(plays, "episode"),
+    movieGenreWatch: genreWatchFromPlays(plays, "movie"),
+    tvGenreWatch: genreWatchFromPlays(plays, "episode"),
     tvNetworks: uniqueOrgBars(
       plays,
       "episode",

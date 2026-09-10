@@ -761,7 +761,7 @@ function tallyGenres(
     }));
 }
 
-function genreWatchFromPlays(
+export function genreWatchFromPlays(
   plays: MonthPlay[],
   kind: "movie" | "episode",
 ): GenreWatch {

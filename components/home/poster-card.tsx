@@ -72,8 +72,6 @@ function artworkSrc(url: string): string {
 
 function badgeClass(tone: HomePoster["badgeTone"]): string {
   switch (tone) {
-    case "pending":
-      return "bg-sync-pending/16 text-sync-pending";
     case "premiere":
       return "bg-accent/16 text-accent";
     case "finale":

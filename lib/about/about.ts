@@ -55,7 +55,7 @@ function databaseBytes(): number {
 export function aboutFacts(): AboutFacts {
   const count = watchEventTotal();
   return {
-    version: process.env.npm_package_version ?? "0.1.4",
+    version: process.env.npm_package_version ?? "0.1.5",
     build: currentBuild(),
     uptime: formatUptime(Date.now() - processStartedAt),
     database: formatBytes(databaseBytes()),

@@ -54,7 +54,7 @@ export default async function MonthlyPage({
             <MonthBreakdowns services={review.services} />
             <MonthTopFive
               items={review.topShows}
-              title={"Most Watched\nTV Shows"}
+              label="Most watched TV show"
             />
             <MonthGenreWatch
               items={review.tvGenres}
@@ -63,10 +63,7 @@ export default async function MonthlyPage({
               watch={review.tvGenreWatch}
               watermark="show genres"
             />
-            <MonthTopFive
-              items={review.topMovies}
-              title={"Most Watched\nMovies"}
-            />
+            <MonthTopFive items={review.topMovies} label="Most watched movie" />
             <MonthGenreWatch
               items={review.movieGenres}
               title={"Most Watched\nMovie Genres"}

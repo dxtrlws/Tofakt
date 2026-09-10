@@ -4,13 +4,27 @@ export function MonthMomentCard({
   moment,
   label,
   accent,
+  size = "feature",
+  unmatched,
+  heading: Heading = "h2",
+  className,
 }: {
   moment: MonthMoment;
   label: string;
   accent?: boolean;
+  size?: "feature" | "ranked";
+  unmatched?: boolean;
+  heading?: "h2" | "h3";
+  className?: string;
 }) {
+  const featured = size === "feature";
   return (
-    <section className="relative mx-4 mt-5 flex items-end gap-3 overflow-hidden md:mx-8 md:mt-10 md:rounded-xl md:border md:border-border">
+    <section
+      className={
+        className ??
+        "relative mx-4 mt-5 flex items-end gap-3 overflow-hidden md:mx-8 md:mt-10 md:rounded-xl md:border md:border-border"
+      }
+    >
       {moment.backdropUrl ? (
         // biome-ignore lint/performance/noImgElement: TMDB CDN or local artwork proxy
         <img
@@ -22,14 +36,28 @@ export function MonthMomentCard({
         <div className="absolute inset-0 hidden bg-bg-raised md:block" />
       )}
       <div className="absolute inset-0 hidden bg-gradient-to-r from-bg-base via-bg-base/78 to-bg-base/25 md:block" />
-      <div className="relative flex min-h-0 w-full items-end gap-3 md:min-h-[280px] md:items-end md:gap-8 md:p-6">
-        <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-md bg-accent-dim md:h-[222px] md:w-[148px] md:rounded-lg md:border md:border-border">
+      <div
+        className={`relative flex min-h-0 w-full items-end gap-3 md:items-end md:p-6 ${
+          featured ? "md:min-h-[280px] md:gap-8" : "md:min-h-[200px] md:gap-6"
+        }`}
+      >
+        <div
+          className={`relative shrink-0 overflow-hidden rounded-md bg-accent-dim md:rounded-lg md:border md:border-border ${
+            featured
+              ? "h-[108px] w-[72px] md:h-[222px] md:w-[148px]"
+              : "h-[108px] w-[72px] md:h-[168px] md:w-[112px]"
+          }`}
+        >
           {moment.artworkUrl ? (
             // biome-ignore lint/performance/noImgElement: local artwork proxy or TMDB CDN
             <img
               alt=""
               className="h-full w-full object-cover"
-              src={mediaSrc(moment.artworkUrl, 296, 444)}
+              src={mediaSrc(
+                moment.artworkUrl,
+                featured ? 296 : 224,
+                featured ? 444 : 336,
+              )}
             />
           ) : null}
         </div>
@@ -41,13 +69,27 @@ export function MonthMomentCard({
           >
             {label}
           </p>
-          <h2 className="font-headline text-title-sm font-semibold leading-title-sm text-fg md:text-display md:font-bold md:leading-display md:tracking-display">
+          <Heading
+            className={`font-headline font-semibold text-fg ${
+              featured
+                ? "text-title-sm leading-title-sm md:text-display md:font-bold md:leading-display md:tracking-display"
+                : "text-title-sm leading-title-sm md:text-title md:leading-title md:tracking-title"
+            }`}
+          >
             {moment.title}
-          </h2>
-          <p className="text-meta leading-meta text-fg-muted md:hidden">
+          </Heading>
+          <p
+            className={`text-meta leading-meta md:hidden ${
+              unmatched ? "text-sync-unmatched" : "text-fg-muted"
+            }`}
+          >
             {moment.line}
           </p>
-          <p className="hidden text-body font-medium leading-body text-fg md:block">
+          <p
+            className={`hidden text-body font-medium leading-body md:block ${
+              unmatched ? "text-sync-unmatched" : "text-fg"
+            }`}
+          >
             {moment.line}
           </p>
           <p className="hidden text-ui leading-ui text-fg-muted md:block">

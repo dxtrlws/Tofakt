@@ -27,7 +27,7 @@ export async function fetchJson(
       signal: controller.signal,
       headers: {
         accept: "application/json",
-        "user-agent": "watchlog/0.1.3",
+        "user-agent": "watchlog/0.1.4",
         ...init.headers,
       },
     });
@@ -67,7 +67,7 @@ export async function fetchBytes(
       ...init,
       signal: controller.signal,
       headers: {
-        "user-agent": "watchlog/0.1.3",
+        "user-agent": "watchlog/0.1.4",
         ...init.headers,
       },
     });

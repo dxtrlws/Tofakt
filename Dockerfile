@@ -7,17 +7,23 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+ARG WATCHLOG_BUILD=dev
+ENV WATCHLOG_BUILD=$WATCHLOG_BUILD
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_PATH=/tmp/watchlog-build.db
 RUN npm run build
 
 FROM node:22-alpine AS runner
 
+ARG WATCHLOG_BUILD=dev
+ENV WATCHLOG_BUILD=$WATCHLOG_BUILD
+
 LABEL org.opencontainers.image.title="Watchlog" \
   org.opencontainers.image.description="Records plays from tofa, syncs them to Trakt, and builds monthly and yearly reviews." \
   org.opencontainers.image.url="https://github.com/dxtrlws/Tofakt-" \
   org.opencontainers.image.documentation="https://github.com/dxtrlws/Tofakt-/tree/main/docs/package" \
-  org.opencontainers.image.source="https://github.com/dxtrlws/Tofakt-/tree/main/docs/package"
+  org.opencontainers.image.source="https://github.com/dxtrlws/Tofakt-/tree/main/docs/package" \
+  org.opencontainers.image.revision="${WATCHLOG_BUILD}"
 
 # node:alpine already provides uid/gid 1000 as "node". The entrypoint
 # drops to PUID/PGID (default 1000); do not recreate that id here.

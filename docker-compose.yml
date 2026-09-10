@@ -1,7 +1,10 @@
 services:
   watchlog:
     image: ghcr.io/dxtrlws/watchlog:latest
-    build: .
+    build:
+      context: .
+      args:
+        WATCHLOG_BUILD: ${WATCHLOG_BUILD:-dev}
     ports:
       - "9477:9477"
     environment:

@@ -11,6 +11,7 @@ import { getCircuit } from "../sync/settings";
 import { traktLimiter } from "../trakt/rate-limit";
 import { formatBytes, formatStamp, formatUptime } from "./about-format";
 import { processStartedAt } from "./boot";
+import { currentBuild } from "./build";
 
 export type AboutFacts = {
   version: string;
@@ -55,7 +56,7 @@ export function aboutFacts(): AboutFacts {
   const count = watchEventTotal();
   return {
     version: process.env.npm_package_version ?? "0.1.3",
-    build: process.env.WATCHLOG_BUILD?.trim() || "dev",
+    build: currentBuild(),
     uptime: formatUptime(Date.now() - processStartedAt),
     database: formatBytes(databaseBytes()),
     events: `${count} ${count === 1 ? "play" : "plays"}`,

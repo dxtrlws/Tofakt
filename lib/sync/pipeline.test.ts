@@ -8,6 +8,7 @@ import { syncRecords, watchEvents } from "../db/schema";
 import { commitPage } from "../ingest/run";
 import type { MediaDetail, PlaySession } from "../tofa/history";
 import { runSync } from "./run";
+import { saveSyncSettings } from "./settings";
 
 const fixtures = join(process.cwd(), "lib/sync/fixtures");
 
@@ -96,7 +97,7 @@ vi.mock("./posted", async (importOriginal) => {
 });
 
 vi.mock("./reconcile", () => ({
-  pullTraktHistory: async () => ({ count: 0 }),
+  pullTraktHistory: async () => ({ count: 0, matched: 0 }),
   listSnapshots: () => [],
 }));
 
@@ -153,6 +154,18 @@ describe("ingest → sync fixtures", () => {
     ctx.sqlite?.exec("delete from media_genres");
     ctx.sqlite?.exec("delete from provider_snapshots");
     ctx.sqlite?.exec("delete from media_items");
+  });
+
+  it("does not post pending plays without an explicit Run sync now", async () => {
+    ingest(["play-inception", "play-silo"]);
+    saveSyncSettings({
+      mode: "forward",
+      cutoffIso: "2020-01-01T00:00:00.000Z",
+    });
+    const idle = await runSync();
+    expect(idle.posted).toBe(0);
+    expect(ctx.posts).toHaveLength(0);
+    expect(records().every((row) => row.status === "pending")).toBe(true);
   });
 
   it("posts complete tofa plays once and ignores a second ingest", async () => {

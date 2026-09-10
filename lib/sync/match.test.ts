@@ -62,4 +62,94 @@ describe("matchSnapshot", () => {
     );
     expect(hit).toBeUndefined();
   });
+
+  it("matches an episode by show TMDB plus season and episode", () => {
+    const hit = matchSnapshot(
+      {
+        kind: "episode",
+        tmdbId: 4170850,
+        imdbId: null,
+        tvdbId: null,
+        showTmdbId: 125988,
+        seasonNumber: 1,
+        episodeNumber: 3,
+        watchedAt,
+      },
+      [
+        {
+          traktHistoryId: 11,
+          kind: "episode",
+          tmdbId: 4170850,
+          imdbId: null,
+          tvdbId: null,
+          showTmdbId: 125988,
+          seasonNumber: 1,
+          episodeNumber: 3,
+          watchedAt: new Date("2026-09-04T02:50:00.000Z"),
+        },
+      ],
+      windowMinutes,
+    );
+    expect(hit?.traktHistoryId).toBe(11);
+  });
+
+  it("matches an episode when Trakt has episode TMDB and local only has show TMDB", () => {
+    const hit = matchSnapshot(
+      {
+        kind: "episode",
+        tmdbId: null,
+        imdbId: null,
+        tvdbId: null,
+        showTmdbId: 125988,
+        seasonNumber: 1,
+        episodeNumber: 3,
+        watchedAt,
+      },
+      [
+        {
+          traktHistoryId: 12,
+          kind: "episode",
+          tmdbId: 4170850,
+          imdbId: null,
+          tvdbId: null,
+          showTmdbId: 125988,
+          seasonNumber: 1,
+          episodeNumber: 3,
+          watchedAt,
+        },
+      ],
+      windowMinutes,
+    );
+    expect(hit?.traktHistoryId).toBe(12);
+  });
+
+  it("does not match a different episode of the same show", () => {
+    const hit = matchSnapshot(
+      {
+        kind: "episode",
+        tmdbId: null,
+        imdbId: null,
+        tvdbId: null,
+        showTmdbId: 125988,
+        seasonNumber: 1,
+        episodeNumber: 3,
+        watchedAt,
+      },
+      [
+        {
+          traktHistoryId: 13,
+          kind: "episode",
+          tmdbId: 4170851,
+          imdbId: null,
+          tvdbId: null,
+          showTmdbId: 125988,
+          seasonNumber: 1,
+          episodeNumber: 4,
+          watchedAt,
+        },
+      ],
+      windowMinutes,
+    );
+    expect(hit).toBeUndefined();
+  });
 });

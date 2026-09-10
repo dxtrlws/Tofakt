@@ -92,7 +92,7 @@ export function SyncSettingsForm({
           </button>
           <ModeOption
             checked={sync.mode === "forward"}
-            description="Only plays that finish after you turn this on queue for Trakt. Older plays stay in History as Not synced unless you use Sync now on a row."
+            description="Only plays that finish after you turn this on become pending. Nothing is sent until you click Run sync now or Sync now on a row. Older plays stay in History as Not synced unless you use Sync now."
             name="Newly watched only"
             value="forward"
           />

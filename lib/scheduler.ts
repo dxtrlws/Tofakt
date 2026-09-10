@@ -5,7 +5,6 @@ import { jobs } from "./db/schema";
 import { getIngestSettings, runIngest } from "./ingest/run";
 import { logger } from "./logger";
 import { pullTraktHistory } from "./sync/reconcile";
-import { runSync } from "./sync/run";
 import { isScheduleDue } from "./sync/schedule";
 import { getSyncSettings } from "./sync/settings";
 
@@ -64,14 +63,8 @@ async function tick(): Promise<void> {
       lastFinishedAt: lastJobFinishedAt("ingest"),
     });
     if (ingestDue) {
+      // Ingest never posts. Pending plays wait for Run sync now or Sync now.
       await runIngest();
-      const sync = getSyncSettings();
-      if (
-        sync.mode !== "manual" &&
-        !(sync.mode === "backfill" && !sync.backfillConfirmedAt)
-      ) {
-        await runSync();
-      }
     }
 
     const sync = getSyncSettings();

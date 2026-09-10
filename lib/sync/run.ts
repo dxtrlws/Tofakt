@@ -99,11 +99,11 @@ async function runSyncUnlocked(opts?: {
     persistStats(stats, started);
     return stats;
   }
-  const settings = getSyncSettings();
-  if (settings.mode === "manual" && !opts?.eventIds && !opts?.force) {
+  if (!opts?.eventIds && !opts?.force) {
     persistStats(stats, started);
     return stats;
   }
+  const settings = getSyncSettings();
   if (
     settings.mode === "backfill" &&
     !settings.backfillConfirmedAt &&
@@ -121,6 +121,8 @@ async function runSyncUnlocked(opts?: {
     persistStats(stats, started);
     return stats;
   }
+  stats.alreadyOnTrakt = pulled.matched ?? 0;
+  stats.synced += stats.alreadyOnTrakt;
   const snapshots = listSnapshots();
   const windowMinutes = settings.windowMinutes;
   const candidates = loadCandidates(opts?.eventIds, opts?.ignoreCutoff);
@@ -160,6 +162,7 @@ async function runSyncUnlocked(opts?: {
         tmdbId: row.tmdbId,
         imdbId: row.imdbId,
         tvdbId: row.tvdbId,
+        showTmdbId: row.showTmdbId,
         seasonNumber: row.seasonNumber,
         episodeNumber: row.episodeNumber,
         watchedAt: row.watchedAtUtc,

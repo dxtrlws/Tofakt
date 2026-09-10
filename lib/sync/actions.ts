@@ -142,7 +142,7 @@ export async function setSyncMode(
     });
     refresh();
     return {
-      info: "Only plays that finish after now will queue for Trakt. Older plays stay Not synced unless you sync a row.",
+      info: "Only plays that finish after now will queue as pending. Nothing is sent until you run a sync. Older plays stay Not synced unless you sync a row.",
     };
   }
   if (mode === "backfill") {
@@ -212,7 +212,9 @@ export async function runReconcileNow(
   if (pulled.error) {
     return { error: pulled.error };
   }
-  return { info: `Loaded ${pulled.count} plays from Trakt history.` };
+  return {
+    info: `Loaded ${pulled.count} plays from Trakt history. Marked ${pulled.matched} already on Trakt.`,
+  };
 }
 
 export async function syncWatchEvent(formData: FormData): Promise<void> {

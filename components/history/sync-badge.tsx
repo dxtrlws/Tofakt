@@ -17,7 +17,8 @@ const LABELS: Record<SyncBadgeState, string> = {
 
 const HINTS: Record<SyncBadgeState, string> = {
   synced: "On Trakt. Use Remove from Trakt on the row to delete this play.",
-  pending: "Queued. Will go to Trakt when you run a sync job.",
+  pending:
+    "Queued. It goes to Trakt when you click Run sync now or Sync now on this row.",
   skipped: "Deliberately excluded from sync.",
   failed: "Tried to sync and could not.",
   unmatched: "No usable external id, so Trakt cannot identify it.",
@@ -26,7 +27,7 @@ const HINTS: Record<SyncBadgeState, string> = {
 function hintFor(state: SyncBadgeState, skipReason: string | null): string {
   if (state === "skipped") {
     if (skipReason === "before_cutoff") {
-      return "Older than Newly watched only. It will not auto-sync. Use Sync now to send this play anyway.";
+      return "Older than Newly watched only. It will not be sent unless you use Sync now.";
     }
     if (skipReason === "user_ignored") {
       return "You chose not to sync this play.";
@@ -39,7 +40,7 @@ function hintFor(state: SyncBadgeState, skipReason: string | null): string {
     }
   }
   if (state === "pending") {
-    return "Queued. Manual mode waits for Run sync now or Sync now. Newly watched only sends these on the next automatic run.";
+    return "Queued. It goes to Trakt when you click Run sync now or Sync now on this row.";
   }
   return HINTS[state];
 }

@@ -4,6 +4,7 @@ export type SnapshotPlay = {
   tmdbId: number | null;
   imdbId: string | null;
   tvdbId: number | null;
+  showTmdbId?: number | null;
   seasonNumber: number | null;
   episodeNumber: number | null;
   watchedAt: Date | null;
@@ -40,6 +41,35 @@ function sameId(
   return false;
 }
 
+function sameShow(play: MatchablePlay, row: SnapshotPlay): boolean {
+  const rowShow = row.showTmdbId ?? null;
+  if (play.showTmdbId && rowShow && play.showTmdbId === rowShow) {
+    return true;
+  }
+  // Older snapshots stored show TMDB in tmdbId when the episode had no TMDB id.
+  return Boolean(
+    play.showTmdbId && row.tmdbId && play.showTmdbId === row.tmdbId,
+  );
+}
+
+function sameEpisode(play: MatchablePlay, row: SnapshotPlay): boolean {
+  const bothHaveNumbers =
+    play.seasonNumber != null &&
+    play.episodeNumber != null &&
+    row.seasonNumber != null &&
+    row.episodeNumber != null;
+  if (bothHaveNumbers) {
+    if (
+      row.seasonNumber !== play.seasonNumber ||
+      row.episodeNumber !== play.episodeNumber
+    ) {
+      return false;
+    }
+    return sameId(play, row) || sameShow(play, row);
+  }
+  return sameId(play, row);
+}
+
 export function matchSnapshot(
   play: MatchablePlay,
   snapshots: SnapshotPlay[],
@@ -58,20 +88,6 @@ export function matchSnapshot(
     if (play.kind === "movie") {
       return row.kind === "movie" && sameId(play, row);
     }
-    if (row.kind !== "episode") {
-      return false;
-    }
-    if (sameId(play, row)) {
-      return true;
-    }
-    return Boolean(
-      play.showTmdbId &&
-        row.tmdbId &&
-        play.showTmdbId === row.tmdbId &&
-        play.seasonNumber != null &&
-        play.episodeNumber != null &&
-        row.seasonNumber === play.seasonNumber &&
-        row.episodeNumber === play.episodeNumber,
-    );
+    return row.kind === "episode" && sameEpisode(play, row);
   });
 }

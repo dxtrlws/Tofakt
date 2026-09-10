@@ -12,6 +12,8 @@ import { newId } from "../ids";
 import { logger } from "../logger";
 import { UpstreamError } from "../net/fetch-json";
 import { type TraktHistoryItem, traktGetHistoryPage } from "../trakt/history";
+import { markAlreadyOnTrakt } from "./already";
+import type { SnapshotPlay } from "./match";
 import { getSyncSettings } from "./settings";
 
 export type SnapshotRow = {
@@ -20,6 +22,7 @@ export type SnapshotRow = {
   tmdbId: number | null;
   imdbId: string | null;
   tvdbId: number | null;
+  showTmdbId: number | null;
   seasonNumber: number | null;
   episodeNumber: number | null;
   watchedAtUtc: Date | null;
@@ -27,6 +30,7 @@ export type SnapshotRow = {
 
 export async function pullTraktHistory(): Promise<{
   count: number;
+  matched: number;
   error?: string;
 }> {
   const started = new Date();
@@ -37,6 +41,7 @@ export async function pullTraktHistory(): Promise<{
 
 async function pullTraktHistoryUnlocked(): Promise<{
   count: number;
+  matched: number;
   error?: string;
 }> {
   await refreshDueTokens();
@@ -44,7 +49,7 @@ async function pullTraktHistoryUnlocked(): Promise<{
   const app = row ? readTraktAppSecrets(row) : null;
   const token = row ? readAccessToken(row) : null;
   if (!app || !token) {
-    return { count: 0, error: "Trakt is not connected." };
+    return { count: 0, matched: 0, error: "Trakt is not connected." };
   }
   const fetchedAt = new Date();
   const items: SnapshotRow[] = [];
@@ -78,16 +83,21 @@ async function pullTraktHistoryUnlocked(): Promise<{
     if (err instanceof ZodError) {
       return {
         count: 0,
+        matched: 0,
         error: "Trakt sent a history page Watchlog could not parse.",
       };
     }
     const message =
       err instanceof Error ? err.message : "Trakt history failed.";
-    return { count: 0, error: message };
+    return { count: 0, matched: 0, error: message };
   }
   replaceSnapshots(items, fetchedAt);
-  logger.info({ count: items.length }, "Stored Trakt history snapshot");
-  return { count: items.length };
+  const matched = markAlreadyOnTrakt(items.map(toSnapshotPlay));
+  logger.info(
+    { count: items.length, matched },
+    "Stored Trakt history snapshot",
+  );
+  return { count: items.length, matched };
 }
 
 function recordReconcileJob(
@@ -204,10 +214,25 @@ export function listSnapshots(): SnapshotRow[] {
       tmdbId: row.tmdbId,
       imdbId: row.imdbId,
       tvdbId: row.tvdbId,
+      showTmdbId: null,
       seasonNumber: row.seasonNumber,
       episodeNumber: row.episodeNumber,
       watchedAtUtc: row.watchedAtUtc,
     }));
+}
+
+export function toSnapshotPlay(row: SnapshotRow): SnapshotPlay {
+  return {
+    traktHistoryId: row.traktHistoryId,
+    kind: row.kind,
+    tmdbId: row.tmdbId,
+    imdbId: row.imdbId,
+    tvdbId: row.tvdbId,
+    showTmdbId: row.showTmdbId,
+    seasonNumber: row.seasonNumber,
+    episodeNumber: row.episodeNumber,
+    watchedAt: row.watchedAtUtc,
+  };
 }
 
 function replaceSnapshots(items: SnapshotRow[], fetchedAt: Date): void {
@@ -245,6 +270,7 @@ function mapHistoryItem(
       tmdbId: ids?.tmdb ?? null,
       imdbId: ids?.imdb ?? null,
       tvdbId: ids?.tvdb ?? null,
+      showTmdbId: null,
       seasonNumber: null,
       episodeNumber: null,
       watchedAtUtc:
@@ -259,6 +285,7 @@ function mapHistoryItem(
     tmdbId: episodeIds?.tmdb ?? showIds?.tmdb ?? null,
     imdbId: episodeIds?.imdb ?? showIds?.imdb ?? null,
     tvdbId: episodeIds?.tvdb ?? showIds?.tvdb ?? null,
+    showTmdbId: showIds?.tmdb ?? null,
     seasonNumber: item.episode?.season ?? null,
     episodeNumber: item.episode?.number ?? null,
     watchedAtUtc:

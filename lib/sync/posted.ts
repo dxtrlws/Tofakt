@@ -53,6 +53,7 @@ export async function capturePostedRemoteIds(
     tmdbId: row.tmdbId,
     imdbId: row.imdbId,
     tvdbId: row.tvdbId,
+    showTmdbId: row.showTmdbId,
     seasonNumber: row.seasonNumber,
     episodeNumber: row.episodeNumber,
     watchedAt: row.watchedAtUtc,

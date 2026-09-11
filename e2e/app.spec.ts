@@ -22,6 +22,7 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
       .filter({ has: page.getByRole("heading", { name: "tofa" }) });
     await tofa.getByLabel("tofa server URL").fill("http://127.0.0.1:8099");
     await tofa.getByRole("button", { name: "Save URL" }).click();
+    await expect(tofa.getByLabel("tofa API key")).toBeVisible();
     await expect(tofa.getByLabel("tofa server URL")).toHaveValue(
       "http://127.0.0.1:8099",
     );

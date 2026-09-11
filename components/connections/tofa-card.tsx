@@ -50,7 +50,7 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
     }
   }, [connection.hasSecret]);
 
-  const hasUrl = Boolean(connection.baseUrl);
+  const hasUrl = Boolean(connection.baseUrl) || Boolean(urlState?.info);
   const authorized = connection.hasSecret || Boolean(keyState?.info);
   const showKeyForm = hasUrl && (!authorized || replace);
 

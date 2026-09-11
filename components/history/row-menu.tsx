@@ -1,5 +1,7 @@
 "use client";
 
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { ignoreWatchEvent, unignoreWatchEvent } from "@/lib/ingest/actions";
 import {
   removeWatchEvent,
@@ -19,17 +21,47 @@ export function RowMenu({
   ignored: boolean;
   status: string;
 }) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [removeState, removeAction] = useActionState(
+    removeWatchEvent,
+    undefined,
+  );
   const canSync = status !== "synced" && !ignored;
   const canRemove = status === "synced";
+
+  useEffect(() => {
+    if (!removeState?.info || removeState.error) {
+      return;
+    }
+    if (detailsRef.current) {
+      detailsRef.current.open = false;
+    }
+    setConfirmingRemove(false);
+  }, [removeState]);
+
+  function closeMenu() {
+    if (detailsRef.current) {
+      detailsRef.current.open = false;
+    }
+    setConfirmingRemove(false);
+  }
+
   return (
     <details
       className="relative w-5 shrink-0"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
-          event.currentTarget.open = false;
+          closeMenu();
           event.currentTarget.querySelector("summary")?.focus();
         }
       }}
+      onToggle={(event) => {
+        if (!event.currentTarget.open) {
+          setConfirmingRemove(false);
+        }
+      }}
+      ref={detailsRef}
     >
       <summary
         aria-label="Play actions"
@@ -37,41 +69,79 @@ export function RowMenu({
       >
         ···
       </summary>
-      <div className="absolute right-0 z-10 mt-1 w-52 rounded-md border border-border bg-bg-overlay p-1">
-        {canSync ? (
-          <form action={status === "failed" ? retryWatchEvent : syncWatchEvent}>
+      <div className="absolute right-0 z-10 mt-1 w-64 rounded-md border border-border bg-bg-overlay p-1">
+        {confirmingRemove && canRemove ? (
+          <form action={removeAction}>
             <input name="eventId" type="hidden" value={eventId} />
-            <button className={itemClass} type="submit">
-              {status === "failed" ? "Retry" : "Sync now"}
-            </button>
+            <p className="px-3 py-2 text-meta leading-meta text-fg-muted">
+              Remove this one play from Trakt? Other watches of the same title
+              stay.
+            </p>
+            {removeState?.error ? (
+              <p className="px-3 pb-1 text-meta text-sync-failed" role="alert">
+                {removeState.error}
+              </p>
+            ) : null}
+            <RemoveSubmit />
+            <RemoveCancel onCancel={() => setConfirmingRemove(false)} />
           </form>
-        ) : null}
-        {canRemove ? (
-          <form
-            action={removeWatchEvent}
-            onSubmit={(event) => {
-              if (
-                !window.confirm(
-                  "Remove this one play from Trakt? Other watches of the same title stay.",
-                )
-              ) {
-                event.preventDefault();
-              }
-            }}
-          >
-            <input name="eventId" type="hidden" value={eventId} />
-            <button className={`${itemClass} text-sync-failed`} type="submit">
-              Remove from Trakt
-            </button>
-          </form>
-        ) : null}
-        <form action={ignored ? unignoreWatchEvent : ignoreWatchEvent}>
-          <input name="eventId" type="hidden" value={eventId} />
-          <button className={itemClass} type="submit">
-            {ignored ? "Unignore" : "Ignore"}
-          </button>
-        </form>
+        ) : (
+          <>
+            {canSync ? (
+              <form
+                action={status === "failed" ? retryWatchEvent : syncWatchEvent}
+              >
+                <input name="eventId" type="hidden" value={eventId} />
+                <button className={itemClass} type="submit">
+                  {status === "failed" ? "Retry" : "Sync now"}
+                </button>
+              </form>
+            ) : null}
+            {canRemove ? (
+              <button
+                className={`${itemClass} text-sync-failed`}
+                onClick={() => setConfirmingRemove(true)}
+                type="button"
+              >
+                Remove from Trakt
+              </button>
+            ) : null}
+            <form action={ignored ? unignoreWatchEvent : ignoreWatchEvent}>
+              <input name="eventId" type="hidden" value={eventId} />
+              <button className={itemClass} type="submit">
+                {ignored ? "Unignore" : "Ignore"}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </details>
+  );
+}
+
+function RemoveSubmit() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      className={`${itemClass} text-sync-failed disabled:opacity-60`}
+      disabled={pending}
+      type="submit"
+    >
+      {pending ? "Removing…" : "Remove"}
+    </button>
+  );
+}
+
+function RemoveCancel({ onCancel }: { onCancel: () => void }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      className={`${itemClass} disabled:opacity-60`}
+      disabled={pending}
+      onClick={onCancel}
+      type="button"
+    >
+      Cancel
+    </button>
   );
 }

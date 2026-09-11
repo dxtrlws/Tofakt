@@ -11,7 +11,7 @@ import {
 import { getDb } from "../db";
 import { mediaItems, syncRecords, watchEvents } from "../db/schema";
 import { logger } from "../logger";
-import { traktRemoveHistory } from "../trakt/history";
+import { type TraktRemoveResponse, traktRemoveHistory } from "../trakt/history";
 import { matchSnapshot } from "./match";
 import { isWatchlogPosted } from "./posted";
 import {
@@ -72,7 +72,12 @@ export async function removeWatchlogPosts(): Promise<RemoveStats> {
 export async function removeOnePlay(eventId: string): Promise<RemoveStats> {
   const play = loadPlays([eventId])[0];
   if (!play || play.status !== "synced") {
-    return { considered: 0, removed: 0, skipped: 1 };
+    return {
+      considered: 0,
+      removed: 0,
+      skipped: 1,
+      error: "This play is not synced to Trakt.",
+    };
   }
   return removePlays([play], { watchlogPostedOnly: false });
 }
@@ -108,6 +113,11 @@ async function removePlays(
     }
     resolved.push({ ...play, remoteId });
   }
+  if (resolved.length === 0) {
+    stats.error =
+      "Could not find this play on Trakt. Re-run reconciliation, then try again.";
+    return stats;
+  }
   for (let i = 0; i < resolved.length; i += BATCH) {
     const batch = resolved.slice(i, i + BATCH);
     const ids = batch.map((play) => play.remoteId);
@@ -131,9 +141,23 @@ async function removePlays(
       );
       return stats;
     }
-    revertAfterRemove(batch);
-    deleteSnapshotsByHistoryIds(ids);
-    stats.removed += batch.length;
+    const deletedIds = deletedHistoryIds(res.json, ids);
+    if (deletedIds.length === 0) {
+      stats.error =
+        "Trakt did not find this play. Re-run reconciliation, then try again.";
+      stats.skipped += batch.length;
+      logger.warn(
+        { ids, notFound: res.json?.not_found?.ids },
+        "Trakt history remove returned no deletes",
+      );
+      return stats;
+    }
+    const deletedSet = new Set(deletedIds);
+    const succeeded = batch.filter((play) => deletedSet.has(play.remoteId));
+    revertAfterRemove(succeeded);
+    deleteSnapshotsByHistoryIds(deletedIds);
+    stats.removed += succeeded.length;
+    stats.skipped += batch.length - succeeded.length;
   }
   logger.info(stats, "Removed Watchlog plays from Trakt");
   return stats;
@@ -178,9 +202,26 @@ async function resolveRemoteId(
     }
     persistRemoteId(play.eventId, hit.traktHistoryId);
     return hit.traktHistoryId;
-  } catch {
+  } catch (err) {
+    logger.warn(
+      { err, eventId: play.eventId },
+      "Could not resolve Trakt history id",
+    );
     return null;
   }
+}
+
+function deletedHistoryIds(
+  json: TraktRemoveResponse | null,
+  requestedIds: number[],
+): number[] {
+  const deletedCount =
+    (json?.deleted?.movies ?? 0) + (json?.deleted?.episodes ?? 0);
+  if (deletedCount === 0) {
+    return [];
+  }
+  const notFound = new Set(json?.not_found?.ids ?? []);
+  return requestedIds.filter((id) => !notFound.has(id));
 }
 
 function persistRemoteId(eventId: string, remoteId: number): void {

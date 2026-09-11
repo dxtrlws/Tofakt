@@ -8,6 +8,7 @@ import { requireUser } from "../auth/require";
 import { getDb } from "../db";
 import { mediaItems, syncRecords, watchEvents } from "../db/schema";
 import type { ActionFlash } from "../toast/flash";
+import { reply } from "../toast/persist";
 import { eligibilityForEvent } from "./eligibility";
 import { getIngestSettings, runIngest } from "./run";
 import { isPlaybackSession } from "./timestamps";
@@ -25,18 +26,18 @@ export async function runIngestNow(
 ): Promise<IngestActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const stats = await runIngest();
   revalidatePath("/history");
   revalidatePath("/settings/about");
   revalidatePath("/settings/logs");
   if (stats.error) {
-    return { error: stats.error };
+    return reply({ error: stats.error });
   }
-  return {
+  return reply({
     info: `Ingested ${stats.inserted} new plays (${stats.updated} already stored).`,
-  };
+  });
 }
 
 export async function ignoreWatchEvent(
@@ -44,11 +45,11 @@ export async function ignoreWatchEvent(
 ): Promise<IngestActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const eventId = String(formData.get("eventId") ?? "");
   if (!eventId) {
-    return { error: "Missing play." };
+    return reply({ error: "Missing play." });
   }
   const record = getDb()
     .select()
@@ -56,7 +57,7 @@ export async function ignoreWatchEvent(
     .where(eq(syncRecords.watchEventId, eventId))
     .get();
   if (!record) {
-    return { error: "This play has no sync record." };
+    return reply({ error: "This play has no sync record." });
   }
   getDb()
     .update(syncRecords)
@@ -69,7 +70,7 @@ export async function ignoreWatchEvent(
     subjectId: eventId,
   });
   revalidatePath("/history");
-  return { info: "This play will not sync." };
+  return reply({ info: "This play will not sync." });
 }
 
 export async function unignoreWatchEvent(
@@ -77,11 +78,11 @@ export async function unignoreWatchEvent(
 ): Promise<IngestActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const eventId = String(formData.get("eventId") ?? "");
   if (!eventId) {
-    return { error: "Missing play." };
+    return reply({ error: "Missing play." });
   }
   const event = getDb()
     .select()
@@ -89,7 +90,7 @@ export async function unignoreWatchEvent(
     .where(eq(watchEvents.id, eventId))
     .get();
   if (!event) {
-    return { error: "This play is gone." };
+    return reply({ error: "This play is gone." });
   }
   const media = event.mediaItemId
     ? getDb()
@@ -125,7 +126,7 @@ export async function unignoreWatchEvent(
     subjectId: eventId,
   });
   revalidatePath("/history");
-  return { info: "This play is eligible again." };
+  return reply({ info: "This play is eligible again." });
 }
 
 function playbackFromRaw(rawJson: string | null): boolean {

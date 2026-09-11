@@ -9,6 +9,7 @@ import { MonthPosters } from "@/components/monthly/posters";
 import { MonthTopFive } from "@/components/monthly/ranked";
 import { MonthRatings } from "@/components/monthly/ratings";
 import { MonthStats } from "@/components/monthly/stats";
+import { ToastSeedHost } from "@/components/toast/seed-host";
 import { requireUser } from "@/lib/auth/require";
 import { timezone } from "@/lib/ingest/run";
 import { loadMonthReview } from "@/lib/stats/month";
@@ -26,6 +27,7 @@ export default async function MonthlyPage({
 
   return (
     <AppShell current="monthly" username={user.username}>
+      <ToastSeedHost />
       <main
         className="flex flex-1 flex-col pb-16"
         id="main-content"

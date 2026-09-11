@@ -3,6 +3,7 @@ import { HistoryFilters } from "@/components/history/filters";
 import { HistoryRowView } from "@/components/history/row";
 import { RunIngestButton } from "@/components/history/run-ingest-button";
 import { AppShell } from "@/components/layout/app-shell";
+import { ToastSeedHost } from "@/components/toast/seed-host";
 import { requireUser } from "@/lib/auth/require";
 import {
   groupByDay,
@@ -32,6 +33,7 @@ export default async function HistoryPage({
 
   return (
     <AppShell current="history" username={user.username}>
+      <ToastSeedHost />
       <main className="flex flex-1 flex-col" id="main-content" tabIndex={-1}>
         <div className="flex w-full items-end justify-between px-4 pt-6 md:px-8">
           <div className="flex flex-col gap-2">

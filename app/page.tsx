@@ -6,6 +6,7 @@ import { PosterCard } from "@/components/home/poster-card";
 import { StatusStrip } from "@/components/home/status-strip";
 import { UpcomingFilters } from "@/components/home/upcoming-filters";
 import { AppShell } from "@/components/layout/app-shell";
+import { ToastSeedHost } from "@/components/toast/seed-host";
 import { requireUser } from "@/lib/auth/require";
 import { loadHomeDashboard } from "@/lib/home/query";
 import { parseUpcomingFilter } from "@/lib/home/upcoming";
@@ -20,6 +21,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
 
   return (
     <AppShell current="home" username={user.username}>
+      <ToastSeedHost />
       <HomePoller />
       <main className="flex flex-1 flex-col" id="main-content" tabIndex={-1}>
         <StatusStrip

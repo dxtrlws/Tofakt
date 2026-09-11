@@ -1,5 +1,6 @@
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { SyncSettingsForm } from "@/components/settings/sync-form";
+import { ToastSeedHost } from "@/components/toast/seed-host";
 import { requireUser } from "@/lib/auth/require";
 import { getConnection } from "@/lib/connections/store";
 import { getIngestSettings } from "@/lib/ingest/run";
@@ -23,9 +24,9 @@ export default async function SyncSettingsPage() {
   const ingestAgo = relative(jobs.ingestFinishedAt);
   const reconcileAgo = relative(jobs.reconcileFinishedAt);
   const syncAgo = relative(jobs.syncFinishedAt);
-
   return (
     <>
+      <ToastSeedHost />
       <SettingsTabs current="sync" />
       <div className="px-4 pb-12 pt-5 md:px-8">
         <SyncSettingsForm

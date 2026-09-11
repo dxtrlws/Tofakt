@@ -26,7 +26,8 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: "node .next/standalone/server.js",
+      command:
+        "rm -rf .next/standalone/.next/static .next/standalone/public && cp -a .next/static .next/standalone/.next/static && mkdir -p .next/standalone/public && cp -a public/. .next/standalone/public/ && node .next/standalone/server.js",
       url: "http://127.0.0.1:8081/setup",
       timeout: 60_000,
       reuseExistingServer: false,

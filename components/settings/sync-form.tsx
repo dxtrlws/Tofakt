@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { PrefSelect } from "@/components/settings/pref-select";
+import { BusyLabel } from "@/components/toast/busy-label";
 import { useToastAction } from "@/components/toast/use-toast-action";
 import {
   confirmBackfill,
@@ -67,12 +68,29 @@ export function SyncSettingsForm({
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [undoOpen, setUndoOpen] = useState(false);
-  const [, modeAction] = useToastAction(setSyncMode);
-  const [, prefsAction] = useToastAction(saveSyncPrefs);
-  const [, syncAction] = useToastAction(runSyncNow);
-  const [, reconAction] = useToastAction(runReconcileNow);
-  const [, backfillAction] = useToastAction(confirmBackfill);
-  const [, undoAction] = useToastAction(undoWatchlogPosts);
+  const [, modeAction, modePending] = useToastAction(setSyncMode, {
+    busy: "Saving mode…",
+  });
+  const [, prefsAction, prefsPending] = useToastAction(saveSyncPrefs, {
+    busy: "Saving preferences…",
+  });
+  const [, syncAction, syncPending] = useToastAction(runSyncNow, {
+    busy: "Syncing plays…",
+  });
+  const [, reconAction, reconPending] = useToastAction(runReconcileNow, {
+    busy: "Reconciling…",
+  });
+  const [, backfillAction] = useToastAction(confirmBackfill, {
+    busy: "Queueing plays…",
+  });
+  const [, undoAction] = useToastAction(undoWatchlogPosts, {
+    busy: "Removing Watchlog posts…",
+  });
+  const jobTitle = syncPending
+    ? "Syncing"
+    : reconPending
+      ? "Reconciling"
+      : "Idle";
 
   return (
     <div className="flex flex-col gap-4">
@@ -80,27 +98,33 @@ export function SyncSettingsForm({
         <p className="text-label font-semibold uppercase leading-label tracking-label text-fg-muted">
           Mode
         </p>
-        <form
-          action={modeAction}
+        <div
+          aria-busy={modePending || undefined}
+          aria-label="Sync mode"
           className="flex flex-col gap-2"
-          key={sync.mode}
+          role="radiogroup"
         >
-          <button className="sr-only" type="submit">
-            Save mode
-          </button>
-          <ModeOption
-            checked={sync.mode === "forward"}
-            description="Only plays that finish after you turn this on become pending. Nothing is sent until you click Run sync now or Sync now on a row. Older plays stay in History as Not synced unless you use Sync now."
-            name="Newly watched only"
-            value="forward"
-          />
-          <ModeOption
-            checked={sync.mode === "manual"}
-            description="Nothing is sent unless you click Run sync now or Sync now on a row. Eligible plays stay Pending, including ones Newly watched only had held back."
-            name="Manual"
-            value="manual"
-          />
-        </form>
+          <form
+            action={modeAction}
+            className="flex flex-col gap-2"
+            key={sync.mode}
+          >
+            <ModeOption
+              checked={sync.mode === "forward"}
+              description="Only plays that finish after you turn this on become pending. Nothing is sent until you click Run sync now or Sync now on a row. Older plays stay in History as Not synced unless you use Sync now."
+              disabled={modePending}
+              name="Newly watched only"
+              value="forward"
+            />
+            <ModeOption
+              checked={sync.mode === "manual"}
+              description="Nothing is sent unless you click Run sync now or Sync now on a row. Eligible plays stay Pending, including ones Newly watched only had held back."
+              disabled={modePending}
+              name="Manual"
+              value="manual"
+            />
+          </form>
+        </div>
         <button
           className="flex w-full items-start gap-3 rounded-md px-1 py-2 text-left"
           onClick={() => setPreviewOpen(true)}
@@ -132,6 +156,7 @@ export function SyncSettingsForm({
 
       <form
         action={prefsAction}
+        aria-busy={prefsPending || undefined}
         className={card}
         key={`${ingestEnabled}-${intervalMinutes}-${reconcileEnabled}-${reconcileEveryMinutes}`}
       >
@@ -263,11 +288,11 @@ export function SyncSettingsForm({
       <section className={card}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-body font-semibold">Idle</p>
+            <p className="text-body font-semibold">{jobTitle}</p>
             <p className="text-meta leading-meta text-fg-muted">{jobLabel}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <form action={syncAction}>
+            <form action={syncAction} aria-busy={syncPending || undefined}>
               <JobButton label="Run sync now" />
             </form>
             <button
@@ -277,7 +302,7 @@ export function SyncSettingsForm({
             >
               Undo Watchlog posts
             </button>
-            <form action={reconAction}>
+            <form action={reconAction} aria-busy={reconPending || undefined}>
               <JobButton label="Re-run reconciliation" primary />
             </form>
           </div>
@@ -398,23 +423,31 @@ export function SyncSettingsForm({
 function ModeOption({
   checked,
   description,
+  disabled,
   name,
   value,
 }: {
   checked: boolean;
   description: string;
+  disabled?: boolean;
   name: string;
   value: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-md px-1 py-2">
-      <input
-        className="mt-1 size-3.5 accent-accent"
-        defaultChecked={checked}
-        name="mode"
-        onChange={(event) => event.currentTarget.form?.requestSubmit()}
-        type="radio"
-        value={value}
+    // biome-ignore lint/a11y/useSemanticElements: a submitter is required for React 19 server actions
+    <button
+      aria-checked={checked}
+      className="flex w-full cursor-pointer items-start gap-3 rounded-md px-1 py-2 text-left disabled:cursor-not-allowed disabled:opacity-60"
+      disabled={disabled}
+      name="mode"
+      role="radio"
+      type="submit"
+      value={value}
+    >
+      <span
+        className={`mt-1 size-3.5 shrink-0 rounded-full border ${
+          checked ? "border-accent bg-accent" : "border-fg-subtle"
+        }`}
       />
       <span>
         <span className="block text-ui font-medium text-fg">{name}</span>
@@ -422,7 +455,7 @@ function ModeOption({
           {description}
         </span>
       </span>
-    </label>
+    </button>
   );
 }
 
@@ -500,11 +533,12 @@ function SavePrefs() {
   const { pending } = useFormStatus();
   return (
     <button
+      aria-busy={pending || undefined}
       className={`${secondary} self-end`}
       disabled={pending}
       type="submit"
     >
-      {pending ? "Saving…" : "Save preferences"}
+      <BusyLabel busy="Saving…" idle="Save preferences" pending={pending} />
     </button>
   );
 }
@@ -519,11 +553,12 @@ function JobButton({
   const { pending } = useFormStatus();
   return (
     <button
+      aria-busy={pending || undefined}
       className={isPrimary ? primary : secondary}
       disabled={pending}
       type="submit"
     >
-      {pending ? "Working…" : label}
+      <BusyLabel busy="Working…" idle={label} pending={pending} />
     </button>
   );
 }

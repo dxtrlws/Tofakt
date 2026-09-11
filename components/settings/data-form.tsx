@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { PrefSelect } from "@/components/settings/pref-select";
+import { BusyLabel } from "@/components/toast/busy-label";
 import { useToastAction } from "@/components/toast/use-toast-action";
 import {
   cancelImportAction,
@@ -49,20 +50,29 @@ export function DataSettingsForm({
   const [zone, setZone] = useState(timezone);
   const [week, setWeek] = useState(weekStarts);
   const [partials, setPartials] = useState(countPartials ? "on" : "off");
-  const [, prefsAction] = useToastAction(saveDataPrefsAction);
-  const [, importAction] = useToastAction(previewImportAction);
-  const [, confirmAction] = useToastAction(confirmImportAction);
-  const [, cancelAction] = useToastAction(cancelImportAction);
+  const [, prefsAction, prefsPending] = useToastAction(saveDataPrefsAction, {
+    busy: "Saving preferences…",
+  });
+  const [, importAction, importPending] = useToastAction(previewImportAction, {
+    busy: "Reading import…",
+  });
+  const [, confirmAction] = useToastAction(confirmImportAction, {
+    busy: "Importing history…",
+  });
+  const [, cancelAction] = useToastAction(cancelImportAction, {
+    busy: "Canceling import…",
+  });
   const [clearState, clearAction, clearPending] = useToastAction(
     clearSyncAction,
-    { errors: "inline" },
+    { busy: "Clearing sync records…", errors: "inline" },
   );
   const [wipeState, wipeAction, wipePending] = useToastAction(wipeLocalAction, {
+    busy: "Wiping local history…",
     errors: "inline",
   });
   const [forgetState, forgetAction, forgetPending] = useToastAction(
     forgetConnectionAction,
-    { errors: "inline" },
+    { busy: "Forgetting connection…", errors: "inline" },
   );
 
   useCloseOnSuccess(danger === "clear", clearPending, clearState?.info, () =>
@@ -79,6 +89,7 @@ export function DataSettingsForm({
     <div className="flex flex-col gap-4">
       <form
         action={prefsAction}
+        aria-busy={prefsPending || undefined}
         className="rounded-lg border border-border bg-bg-raised px-5 py-2"
       >
         <PrefRow label="Timezone">
@@ -141,13 +152,16 @@ export function DataSettingsForm({
           <a className={secondary} href="/settings/data/export?format=csv">
             Export CSV
           </a>
-          <form action={importAction}>
+          <form action={importAction} aria-busy={importPending || undefined}>
             <input
               accept="application/json,.json"
               className="hidden"
               name="file"
               onChange={(event) => {
-                event.currentTarget.form?.requestSubmit();
+                const form = event.currentTarget.form;
+                if (form) {
+                  importAction(new FormData(form));
+                }
                 event.currentTarget.value = "";
               }}
               ref={fileRef}
@@ -155,10 +169,15 @@ export function DataSettingsForm({
             />
             <button
               className={secondary}
+              disabled={importPending}
               onClick={() => fileRef.current?.click()}
               type="button"
             >
-              Import
+              <BusyLabel
+                busy="Working…"
+                idle="Import"
+                pending={importPending}
+              />
             </button>
           </form>
         </div>
@@ -398,11 +417,12 @@ function PendingButton({
   const { pending } = useFormStatus();
   return (
     <button
+      aria-busy={pending || undefined}
       className={`${className} disabled:cursor-not-allowed disabled:opacity-40`}
       disabled={pending || disabled}
       type="submit"
     >
-      {pending ? "Working…" : label}
+      <BusyLabel busy="Working…" idle={label} pending={pending} />
     </button>
   );
 }

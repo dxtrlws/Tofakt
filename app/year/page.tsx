@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { MonthMomentCard } from "@/components/monthly/first-play";
 import { MonthGenreWatch } from "@/components/monthly/genres";
+import { ToastSeedHost } from "@/components/toast/seed-host";
 import { YearChrome } from "@/components/year/chrome";
 import { YearEmpty } from "@/components/year/empty";
 import { YearKindStats } from "@/components/year/kind-stats";
@@ -23,6 +24,7 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
 
   return (
     <AppShell current="year" username={user.username}>
+      <ToastSeedHost />
       <main
         className="flex flex-1 flex-col pb-16"
         id="main-content"

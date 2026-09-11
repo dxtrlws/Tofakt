@@ -2,8 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toastFromAction } from "@/components/toast/store";
-import { useToastAction } from "@/components/toast/use-toast-action";
+import { BusyLabel } from "@/components/toast/busy-label";
+import {
+  runWithBusyToast,
+  useToastAction,
+} from "@/components/toast/use-toast-action";
 import {
   type ConnectionActionState,
   saveTofaApiKey,
@@ -25,11 +28,16 @@ import { statusClass, statusDotClass } from "./status";
 
 export function TofaCard({ connection }: { connection: PublicConnection }) {
   const router = useRouter();
-  const [urlState, saveUrl, urlPending] = useToastAction(saveTofaUrl);
-  const [keyState, saveKey, keyPending] = useToastAction(saveTofaApiKey);
+  const [urlState, saveUrl, urlPending] = useToastAction(saveTofaUrl, {
+    busy: "Saving URL…",
+  });
+  const [keyState, saveKey, keyPending] = useToastAction(saveTofaApiKey, {
+    busy: "Saving key…",
+  });
   const [replace, setReplace] = useState(!connection.hasSecret);
   const [flow, setFlow] = useState<ConnectionActionState["flow"]>();
-  const [busy, setBusy] = useState(false);
+  const [testBusy, setTestBusy] = useState(false);
+  const [flowBusy, setFlowBusy] = useState(false);
 
   useEffect(() => {
     if (keyState?.info) {
@@ -83,7 +91,11 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
         </p>
       ) : null}
 
-      <form action={saveUrl} className="flex flex-col gap-2">
+      <form
+        action={saveUrl}
+        aria-busy={urlPending || undefined}
+        className="flex flex-col gap-2"
+      >
         <p className="text-meta leading-meta text-fg-muted">
           Step 1 · Server URL
         </p>
@@ -97,7 +109,7 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
             required
           />
           <button className={outlineBtn} disabled={urlPending} type="submit">
-            {urlPending ? "Saving…" : "Save URL"}
+            <BusyLabel busy="Saving…" idle="Save URL" pending={urlPending} />
           </button>
         </div>
       </form>
@@ -110,7 +122,11 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
       ) : null}
 
       {showKeyForm ? (
-        <form action={saveKey} className="flex flex-col gap-2">
+        <form
+          action={saveKey}
+          aria-busy={keyPending || undefined}
+          className="flex flex-col gap-2"
+        >
           <p className="text-meta leading-meta text-fg-muted">
             Step 2 · API key
           </p>
@@ -125,7 +141,7 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
               type="password"
             />
             <button className={primaryBtn} disabled={keyPending} type="submit">
-              {keyPending ? "Saving…" : "Save key"}
+              <BusyLabel busy="Saving…" idle="Save key" pending={keyPending} />
             </button>
           </div>
         </form>
@@ -150,30 +166,38 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
         {hasUrl && !authorized ? (
           <button
             className={outlineBtn}
-            disabled={busy}
+            disabled={flowBusy || testBusy}
             onClick={() => {
-              setBusy(true);
-              void startTofaDeviceFlow().then((result) => {
-                setBusy(false);
-                toastFromAction(result);
-                setFlow(result.flow);
-              });
+              setFlowBusy(true);
+              void runWithBusyToast("Starting tofa login…", () =>
+                startTofaDeviceFlow(),
+              )
+                .then((result) => {
+                  setFlow(result.flow);
+                })
+                .catch(() => undefined)
+                .finally(() => {
+                  setFlowBusy(false);
+                });
             }}
             type="button"
           >
-            Device flow
+            <BusyLabel busy="Starting…" idle="Device flow" pending={flowBusy} />
           </button>
         ) : null}
         <button
           className={authorized ? primaryBtn : outlineBtn}
-          disabled={busy || !authorized}
+          disabled={testBusy || flowBusy || !authorized}
           onClick={() => {
-            setBusy(true);
-            void testTofaConnection().then((result) => {
-              setBusy(false);
-              toastFromAction(result);
-              router.refresh();
-            });
+            setTestBusy(true);
+            void runWithBusyToast("Testing tofa…", () => testTofaConnection())
+              .then(() => {
+                router.refresh();
+              })
+              .catch(() => undefined)
+              .finally(() => {
+                setTestBusy(false);
+              });
           }}
           title={
             authorized
@@ -182,7 +206,11 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
           }
           type="button"
         >
-          {busy ? "Testing…" : "Test connection"}
+          <BusyLabel
+            busy="Testing…"
+            idle="Test connection"
+            pending={testBusy}
+          />
         </button>
         {authorized ? (
           <button
@@ -196,18 +224,29 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
         {authorized ? (
           <button
             className={ghostBtn}
-            disabled={busy || !hasUrl}
+            disabled={flowBusy || testBusy || !hasUrl}
             onClick={() => {
-              setBusy(true);
-              void startTofaDeviceFlow().then((result) => {
-                setBusy(false);
-                toastFromAction(result);
-                setFlow(result.flow);
-              });
+              setFlowBusy(true);
+              void runWithBusyToast("Starting tofa login…", () =>
+                startTofaDeviceFlow(),
+              )
+                .then((result) => {
+                  setFlow(result.flow);
+                })
+                .catch(() => undefined)
+                .finally(() => {
+                  setFlowBusy(false);
+                });
             }}
             type="button"
           >
-            {connection.authMethod === "device" ? "Re-auth" : "Device flow"}
+            <BusyLabel
+              busy="Starting…"
+              idle={
+                connection.authMethod === "device" ? "Re-auth" : "Device flow"
+              }
+              pending={flowBusy}
+            />
           </button>
         ) : null}
       </div>

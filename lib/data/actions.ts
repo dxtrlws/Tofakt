@@ -6,6 +6,7 @@ import { requireUser } from "../auth/require";
 import type { Provider } from "../connections/types";
 import { timezone } from "../ingest/run";
 import type { ActionFlash } from "../toast/flash";
+import { reply } from "../toast/persist";
 import { clearSyncRecords, forgetProvider, wipeLocalHistory } from "./danger";
 import {
   cancelImportPreview,
@@ -45,7 +46,7 @@ export async function saveDataPrefsAction(
 ): Promise<DataActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const zone = String(form.get("timezone") ?? "");
   const weekStarts = String(form.get("weekStarts"));
@@ -56,7 +57,7 @@ export async function saveDataPrefsAction(
     countPartials,
   });
   refresh();
-  return { info: "Data preferences saved." };
+  return reply({ info: "Data preferences saved." });
 }
 
 export async function previewImportAction(
@@ -65,31 +66,31 @@ export async function previewImportAction(
 ): Promise<DataActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose a Watchlog JSON export first." };
+    return reply({ error: "Choose a Watchlog JSON export first." });
   }
   if (file.size > MAX_IMPORT_BYTES) {
-    return { error: "That file is larger than 20 MB." };
+    return reply({ error: "That file is larger than 20 MB." });
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(await file.text()) as unknown;
   } catch {
-    return { error: "Import expects a Watchlog JSON export." };
+    return reply({ error: "Import expects a Watchlog JSON export." });
   }
   try {
     const count = stashImportPreview(parseHistoryFile(parsed));
     refresh();
-    return {
+    return reply({
       info: `${count} ${count === 1 ? "play" : "plays"} ready to import. Confirm below to write them. Existing plays are skipped.`,
-    };
+    });
   } catch (err) {
-    return {
+    return reply({
       error: err instanceof Error ? err.message : "Could not read that file.",
-    };
+    });
   }
 }
 
@@ -99,18 +100,18 @@ export async function confirmImportAction(
 ): Promise<DataActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   try {
     const result = confirmImport();
     refresh();
-    return {
+    return reply({
       info: `Imported ${result.inserted} ${result.inserted === 1 ? "play" : "plays"}. Skipped ${result.skipped} already stored.`,
-    };
+    });
   } catch (err) {
-    return {
+    return reply({
       error: err instanceof Error ? err.message : "Import failed.",
-    };
+    });
   }
 }
 
@@ -120,11 +121,11 @@ export async function cancelImportAction(
 ): Promise<DataActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   cancelImportPreview();
   refresh();
-  return { info: "Import cancelled." };
+  return reply({ info: "Import cancelled." });
 }
 
 export async function clearSyncAction(
@@ -133,16 +134,16 @@ export async function clearSyncAction(
 ): Promise<DataActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   if (!confirmed(form, "Clear sync records")) {
     return { error: "Type Clear sync records to confirm." };
   }
   const count = clearSyncRecords();
   refresh();
-  return {
+  return reply({
     info: `Cleared ${count} sync records. Local history is intact. Trakt was not changed.`,
-  };
+  });
 }
 
 export async function wipeLocalAction(
@@ -151,16 +152,16 @@ export async function wipeLocalAction(
 ): Promise<DataActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   if (!confirmed(form, "Clear all local data")) {
     return { error: "Type Clear all local data to confirm." };
   }
   wipeLocalHistory();
   refresh();
-  return {
+  return reply({
     info: "Local watch history is gone. Connections and login stay. Trakt was not changed.",
-  };
+  });
 }
 
 export async function forgetConnectionAction(
@@ -169,7 +170,7 @@ export async function forgetConnectionAction(
 ): Promise<DataActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   if (!confirmed(form, "Forget a connection")) {
     return { error: "Type Forget a connection to confirm." };
@@ -180,7 +181,7 @@ export async function forgetConnectionAction(
   }
   forgetProvider(provider as Provider);
   refresh();
-  return {
+  return reply({
     info: `Forgot ${provider}. Stored tokens are gone. Trakt history stays.`,
-  };
+  });
 }

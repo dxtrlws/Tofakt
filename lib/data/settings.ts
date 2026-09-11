@@ -39,3 +39,7 @@ export function setSettingJson(key: string, value: unknown): void {
     .values({ key, valueJson: encoded, updatedAt: now })
     .run();
 }
+
+export function deleteSetting(key: string): void {
+  getDb().delete(settings).where(eq(settings.key, key)).run();
+}

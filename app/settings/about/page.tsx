@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
+import { ToastSeedHost } from "@/components/toast/seed-host";
 import { aboutFacts } from "@/lib/about/about";
 import { requireUser } from "@/lib/auth/require";
 
@@ -18,6 +19,7 @@ export default async function AboutPage() {
 
   return (
     <>
+      <ToastSeedHost />
       <SettingsTabs current="about" />
       <div className="flex flex-col gap-4 px-4 pb-12 pt-5 md:px-8">
         <section className="rounded-lg border border-border bg-bg-raised px-5 py-2">

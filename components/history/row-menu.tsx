@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import { BusyLabel } from "@/components/toast/busy-label";
 import {
   useToastAction,
   withToastForm,
@@ -16,10 +17,16 @@ import {
 const itemClass =
   "w-full rounded-sm px-3 py-2 text-left text-ui text-fg hover:bg-bg-overlay-strong";
 
-const syncNow = withToastForm(syncWatchEvent);
-const retryNow = withToastForm(retryWatchEvent);
-const ignoreNow = withToastForm(ignoreWatchEvent);
-const unignoreNow = withToastForm(unignoreWatchEvent);
+const syncNow = withToastForm(syncWatchEvent, { busy: "Syncing this play…" });
+const retryNow = withToastForm(retryWatchEvent, {
+  busy: "Retrying this play…",
+});
+const ignoreNow = withToastForm(ignoreWatchEvent, {
+  busy: "Ignoring this play…",
+});
+const unignoreNow = withToastForm(unignoreWatchEvent, {
+  busy: "Updating this play…",
+});
 
 export function RowMenu({
   eventId,
@@ -32,7 +39,9 @@ export function RowMenu({
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const confirmId = useId();
-  const [removeState, removeAction] = useToastAction(removeWatchEvent);
+  const [removeState, removeAction] = useToastAction(removeWatchEvent, {
+    busy: "Removing from Trakt…",
+  });
   const canSync = status !== "synced" && !ignored;
   const canRemove = status === "synced";
 
@@ -79,9 +88,10 @@ export function RowMenu({
           {canSync ? (
             <form action={status === "failed" ? retryNow : syncNow}>
               <input name="eventId" type="hidden" value={eventId} />
-              <button className={itemClass} type="submit">
-                {status === "failed" ? "Retry" : "Sync now"}
-              </button>
+              <MenuSubmit
+                busy={status === "failed" ? "Retrying…" : "Syncing…"}
+                idle={status === "failed" ? "Retry" : "Sync now"}
+              />
             </form>
           ) : null}
           {canRemove ? (
@@ -94,9 +104,10 @@ export function RowMenu({
           ) : null}
           <form action={ignored ? unignoreNow : ignoreNow}>
             <input name="eventId" type="hidden" value={eventId} />
-            <button className={itemClass} type="submit">
-              {ignored ? "Unignore" : "Ignore"}
-            </button>
+            <MenuSubmit
+              busy={ignored ? "Updating…" : "Ignoring…"}
+              idle={ignored ? "Unignore" : "Ignore"}
+            />
           </form>
         </div>
         {canRemove ? (
@@ -120,15 +131,30 @@ export function RowMenu({
   );
 }
 
+function MenuSubmit({ busy, idle }: { busy: string; idle: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      aria-busy={pending || undefined}
+      className={itemClass}
+      disabled={pending}
+      type="submit"
+    >
+      <BusyLabel busy={busy} idle={idle} pending={pending} />
+    </button>
+  );
+}
+
 function RemoveSubmit() {
   const { pending } = useFormStatus();
   return (
     <button
+      aria-busy={pending || undefined}
       className={`${itemClass} text-sync-failed disabled:opacity-60`}
       disabled={pending}
       type="submit"
     >
-      {pending ? "Removing…" : "Remove"}
+      <BusyLabel busy="Removing…" idle="Remove" pending={pending} />
     </button>
   );
 }

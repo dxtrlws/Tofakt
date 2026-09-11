@@ -149,6 +149,28 @@ body {
   animation: toast-in var(--duration-default) var(--ease-default);
 }
 
+@keyframes toast-busy-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.busy-spinner {
+  color: var(--color-accent);
+}
+
+.bg-accent .busy-spinner {
+  color: var(--color-fg-on-accent);
+}
+
+.toast-busy-dot {
+  animation: toast-busy-pulse 1.4s var(--ease-default) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   @keyframes toast-in {
     from {
@@ -157,5 +179,13 @@ body {
     to {
       opacity: 1;
     }
+  }
+
+  .toast-busy-dot {
+    animation: none;
+  }
+
+  .busy-spinner {
+    animation: none;
   }
 }

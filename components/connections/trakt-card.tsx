@@ -2,8 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toastFromAction } from "@/components/toast/store";
-import { useToastAction } from "@/components/toast/use-toast-action";
+import { BusyLabel } from "@/components/toast/busy-label";
+import {
+  runWithBusyToast,
+  useToastAction,
+} from "@/components/toast/use-toast-action";
 import {
   beginTraktDeviceFlow,
   type ConnectionActionState,
@@ -30,12 +33,16 @@ export function TraktCard({
   pending?: ConnectionActionState["flow"];
 }) {
   const router = useRouter();
-  const [appState, saveApp, appPending] = useToastAction(saveTraktApp);
-  const [flowState, beginFlow, flowPending] =
-    useToastAction(beginTraktDeviceFlow);
+  const [appState, saveApp, appPending] = useToastAction(saveTraktApp, {
+    busy: "Saving app…",
+  });
+  const [flowState, beginFlow, flowPending] = useToastAction(
+    beginTraktDeviceFlow,
+    { busy: "Starting Trakt login…" },
+  );
   const [replace, setReplace] = useState(!connection.hasClientCredentials);
   const [flow, setFlow] = useState<ConnectionActionState["flow"]>();
-  const [busy, setBusy] = useState(false);
+  const [testBusy, setTestBusy] = useState(false);
 
   useEffect(() => {
     if (appState?.info) {
@@ -103,7 +110,11 @@ export function TraktCard({
       ) : null}
 
       {showCredentialForm ? (
-        <form action={saveApp} className="flex flex-col gap-2">
+        <form
+          action={saveApp}
+          aria-busy={appPending || undefined}
+          className="flex flex-col gap-2"
+        >
           <p className="text-meta leading-meta text-fg-muted">
             Step 1 · App credentials
           </p>
@@ -126,7 +137,7 @@ export function TraktCard({
             type="password"
           />
           <button className={primaryBtn} disabled={appPending} type="submit">
-            {appPending ? "Saving…" : "Save app"}
+            <BusyLabel busy="Saving…" idle="Save app" pending={appPending} />
           </button>
         </form>
       ) : (
@@ -149,26 +160,33 @@ export function TraktCard({
 
       <div className="flex flex-wrap gap-2">
         {credentialsSaved && !authorized ? (
-          <form action={beginFlow}>
+          <form action={beginFlow} aria-busy={flowPending || undefined}>
             <button
               className={primaryBtn}
-              disabled={busy || flowPending || appPending}
+              disabled={testBusy || flowPending || appPending}
               type="submit"
             >
-              {flowPending ? "Starting…" : "Connect account"}
+              <BusyLabel
+                busy="Starting…"
+                idle="Connect account"
+                pending={flowPending}
+              />
             </button>
           </form>
         ) : null}
         <button
           className={outlineBtn}
-          disabled={busy || !authorized}
+          disabled={testBusy || flowPending || !authorized}
           onClick={() => {
-            setBusy(true);
-            void testTraktConnection().then((result) => {
-              setBusy(false);
-              toastFromAction(result);
-              router.refresh();
-            });
+            setTestBusy(true);
+            void runWithBusyToast("Testing Trakt…", () => testTraktConnection())
+              .then(() => {
+                router.refresh();
+              })
+              .catch(() => undefined)
+              .finally(() => {
+                setTestBusy(false);
+              });
           }}
           title={
             authorized
@@ -177,16 +195,24 @@ export function TraktCard({
           }
           type="button"
         >
-          {busy ? "Testing…" : "Test connection"}
+          <BusyLabel
+            busy="Testing…"
+            idle="Test connection"
+            pending={testBusy}
+          />
         </button>
         {authorized ? (
-          <form action={beginFlow}>
+          <form action={beginFlow} aria-busy={flowPending || undefined}>
             <button
               className={outlineBtn}
-              disabled={busy || flowPending || appPending}
+              disabled={testBusy || flowPending || appPending}
               type="submit"
             >
-              {flowPending ? "Starting…" : "Re-auth"}
+              <BusyLabel
+                busy="Starting…"
+                idle="Re-auth"
+                pending={flowPending}
+              />
             </button>
           </form>
         ) : null}

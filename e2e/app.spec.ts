@@ -54,11 +54,12 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
 
   await test.step("change sync mode then restore manual", async () => {
     await page.goto("/settings/sync");
-    const notices = page.getByRole("region", { name: "Notifications" });
-    await page.getByRole("radio", { name: /^Newly watched only/ }).check();
+    const notices = page.getByRole("region", { name: "Notifications" }).first();
+    await page.getByRole("radio", { name: /^Newly watched only/ }).click();
     await expect(
       notices.getByText(/Only plays that finish after now will queue/),
     ).toBeVisible();
+    await expect(notices).toHaveAttribute("data-hydrated", "true");
     await page
       .getByRole("banner")
       .getByRole("link", { name: "History" })
@@ -68,21 +69,27 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
       notices.getByText(/Only plays that finish after now will queue/),
     ).toBeVisible();
     await page.goto("/settings/sync");
-    await page.getByRole("radio", { name: /^Manual/ }).check();
+    await page.getByRole("radio", { name: /^Manual/ }).click();
     await expect(notices.getByText(/Manual mode/)).toBeVisible();
   });
 
   await test.step("ingest, run sync, open monthly review", async () => {
     await page.goto("/history");
     await page.getByRole("button", { name: "Run ingest", exact: true }).click();
+    await expect(page.getByRole("button", { name: /Ingesting/ })).toBeVisible();
     await expect(page.getByText("Inception")).toBeVisible({ timeout: 30_000 });
 
     await page.goto("/settings/sync");
     await page.getByRole("button", { name: "Run sync now" }).click();
+    await expect(page.getByRole("button", { name: /Working/ })).toBeVisible();
     await page.getByRole("banner").getByRole("link", { name: "Home" }).click();
-    await expect(
-      page.getByRole("region", { name: "Notifications" }).getByText(/Synced /),
-    ).toBeVisible({ timeout: 30_000 });
+    const notices = page.getByRole("region", { name: "Notifications" }).first();
+    await expect(notices.getByText(/Syncing plays|Synced /)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(notices.getByText(/Synced /)).toBeVisible({
+      timeout: 30_000,
+    });
 
     await page.goto("/monthly");
     await expect(

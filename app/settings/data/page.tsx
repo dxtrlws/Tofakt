@@ -1,5 +1,6 @@
 import { DataSettingsForm } from "@/components/settings/data-form";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
+import { ToastSeedHost } from "@/components/toast/seed-host";
 import { requireUser } from "@/lib/auth/require";
 import { getConnection } from "@/lib/connections/store";
 import type { Provider } from "@/lib/connections/types";
@@ -26,6 +27,7 @@ export default async function DataSettingsPage() {
 
   return (
     <>
+      <ToastSeedHost />
       <SettingsTabs current="data" />
       <div className="px-4 pb-12 pt-5 md:px-8">
         <DataSettingsForm

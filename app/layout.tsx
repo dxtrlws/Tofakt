@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import { AuthDisabledBanner } from "@/components/auth/auth-disabled-banner";
-import { Toaster } from "@/components/toast/toaster";
 import { isAuthDisabled } from "@/lib/env";
 import "./globals.css";
 
@@ -41,7 +40,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-bg-base text-fg">
         {isAuthDisabled() ? <AuthDisabledBanner /> : null}
         {children}
-        <Toaster />
       </body>
     </html>
   );

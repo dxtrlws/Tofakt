@@ -2,8 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toastFromAction } from "@/components/toast/store";
-import { useToastAction } from "@/components/toast/use-toast-action";
+import { BusyLabel } from "@/components/toast/busy-label";
+import {
+  runWithBusyToast,
+  useToastAction,
+} from "@/components/toast/use-toast-action";
 import { saveTmdb, testTmdbConnection } from "@/lib/connections/actions";
 import type { PublicConnection } from "@/lib/connections/types";
 import {
@@ -18,9 +21,11 @@ import { statusClass, statusDotClass } from "./status";
 
 export function TmdbCard({ connection }: { connection: PublicConnection }) {
   const router = useRouter();
-  const [state, action, pending] = useToastAction(saveTmdb);
+  const [state, action, pending] = useToastAction(saveTmdb, {
+    busy: "Saving key…",
+  });
   const [replace, setReplace] = useState(!connection.hasSecret);
-  const [busy, setBusy] = useState(false);
+  const [testBusy, setTestBusy] = useState(false);
 
   useEffect(() => {
     if (state?.info) {
@@ -64,7 +69,11 @@ export function TmdbCard({ connection }: { connection: PublicConnection }) {
       ) : null}
 
       {showForm ? (
-        <form action={action} className="flex flex-col gap-2">
+        <form
+          action={action}
+          aria-busy={pending || undefined}
+          className="flex flex-col gap-2"
+        >
           <p className="text-meta leading-meta text-fg-muted">API key</p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
@@ -85,7 +94,7 @@ export function TmdbCard({ connection }: { connection: PublicConnection }) {
               placeholder="US"
             />
             <button className={primaryBtn} disabled={pending} type="submit">
-              {pending ? "Saving…" : "Save"}
+              <BusyLabel busy="Saving…" idle="Save" pending={pending} />
             </button>
           </div>
         </form>
@@ -107,19 +116,26 @@ export function TmdbCard({ connection }: { connection: PublicConnection }) {
       <div className="flex flex-wrap gap-2">
         <button
           className={saved ? primaryBtn : outlineBtn}
-          disabled={pending || busy || !saved}
+          disabled={pending || testBusy || !saved}
           onClick={() => {
-            setBusy(true);
-            void testTmdbConnection().then((result) => {
-              setBusy(false);
-              toastFromAction(result);
-              router.refresh();
-            });
+            setTestBusy(true);
+            void runWithBusyToast("Testing TMDB…", () => testTmdbConnection())
+              .then(() => {
+                router.refresh();
+              })
+              .catch(() => undefined)
+              .finally(() => {
+                setTestBusy(false);
+              });
           }}
           title={saved ? undefined : "Save an API key before testing."}
           type="button"
         >
-          {busy ? "Testing…" : "Test connection"}
+          <BusyLabel
+            busy="Testing…"
+            idle="Test connection"
+            pending={testBusy}
+          />
         </button>
         {saved ? (
           <button

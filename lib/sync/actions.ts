@@ -12,6 +12,7 @@ import { jobs, syncRecords } from "../db/schema";
 import { getIngestSettings } from "../ingest/run";
 import { restartScheduler } from "../scheduler";
 import type { ActionFlash } from "../toast/flash";
+import { reply } from "../toast/persist";
 import { tofaLibraries } from "../tofa/client";
 import {
   applyForwardCutoff,
@@ -38,8 +39,12 @@ async function guard() {
 }
 
 function refresh() {
+  revalidatePath("/");
+  revalidatePath("/settings", "layout");
   revalidatePath("/settings/sync");
   revalidatePath("/history");
+  revalidatePath("/monthly");
+  revalidatePath("/year");
   revalidatePath("/settings/about");
   revalidatePath("/settings/logs");
 }
@@ -50,7 +55,7 @@ export async function saveSyncPrefs(
 ): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const movie = Number(form.get("movieThreshold"));
   const episode = Number(form.get("episodeThreshold"));
@@ -104,7 +109,7 @@ export async function saveSyncPrefs(
   });
   restartScheduler();
   refresh();
-  return { info: "Sync preferences saved." };
+  return reply({ info: "Sync preferences saved." });
 }
 
 export async function setSyncMode(
@@ -113,7 +118,7 @@ export async function setSyncMode(
 ): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const mode = String(form.get("mode")) as SyncMode;
   if (mode === "manual") {
@@ -124,10 +129,11 @@ export async function setSyncMode(
       subjectType: "settings",
       detail: { mode: "manual" },
     });
-    refresh();
-    return {
+    const flash = {
       info: "Manual mode. Eligible plays are pending until you run a job or sync a row. Nothing is sent automatically.",
     };
+    refresh();
+    return reply(flash);
   }
   if (mode === "forward") {
     const cutoff = new Date();
@@ -141,15 +147,16 @@ export async function setSyncMode(
       subjectType: "settings",
       detail: { mode: "forward" },
     });
-    refresh();
-    return {
+    const flash = {
       info: "Only plays that finish after now will queue as pending. Nothing is sent until you run a sync. Older plays stay Not synced unless you sync a row.",
     };
+    refresh();
+    return reply(flash);
   }
   if (mode === "backfill") {
-    return { error: "Confirm the backfill preview first." };
+    return reply({ error: "Confirm the backfill preview first." });
   }
-  return { error: "Unknown sync mode." };
+  return reply({ error: "Unknown sync mode." });
 }
 
 export async function confirmBackfill(
@@ -158,7 +165,7 @@ export async function confirmBackfill(
 ): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   saveSyncSettings({
     mode: "backfill",
@@ -172,9 +179,9 @@ export async function confirmBackfill(
     detail: { eligible: preview.eligible },
   });
   refresh();
-  return {
+  return reply({
     info: `Queued ${preview.eligible} plays for Trakt. Run sync to send them.`,
-  };
+  });
 }
 
 export async function runSyncNow(
@@ -183,11 +190,11 @@ export async function runSyncNow(
 ): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const stats = await runSync({ force: true });
   refresh();
-  return syncJobFlash(stats);
+  return reply(syncJobFlash(stats));
 }
 
 export async function runReconcileNow(
@@ -196,7 +203,7 @@ export async function runReconcileNow(
 ): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const pulled = await pullTraktHistory();
   writeAudit({
@@ -206,11 +213,11 @@ export async function runReconcileNow(
   });
   refresh();
   if (pulled.error) {
-    return { error: pulled.error };
+    return reply({ error: pulled.error });
   }
-  return {
+  return reply({
     info: `Loaded ${pulled.count} plays from Trakt history. Marked ${pulled.matched} already on Trakt.`,
-  };
+  });
 }
 
 export async function syncWatchEvent(
@@ -218,11 +225,11 @@ export async function syncWatchEvent(
 ): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const eventId = String(formData.get("eventId") ?? "");
   if (!eventId) {
-    return { error: "Missing play." };
+    return reply({ error: "Missing play." });
   }
   const stats = await runSync({
     eventIds: [eventId],
@@ -230,7 +237,7 @@ export async function syncWatchEvent(
     force: true,
   });
   refresh();
-  return syncJobFlash(stats, true);
+  return reply(syncJobFlash(stats, true));
 }
 
 export async function removeWatchEvent(
@@ -239,11 +246,11 @@ export async function removeWatchEvent(
 ): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const eventId = String(form.get("eventId") ?? "");
   if (!eventId) {
-    return { error: "Missing play." };
+    return reply({ error: "Missing play." });
   }
   const stats = await removeOnePlay(eventId);
   if (stats.removed > 0) {
@@ -256,15 +263,15 @@ export async function removeWatchEvent(
   }
   refresh();
   if (stats.error) {
-    return { error: stats.error };
+    return reply({ error: stats.error });
   }
   if (stats.removed === 0) {
-    return {
+    return reply({
       error:
         "Could not remove this play from Trakt. Re-run reconciliation, then try again.",
-    };
+    });
   }
-  return { info: "Removed this play from Trakt." };
+  return reply({ info: "Removed this play from Trakt." });
 }
 
 export async function undoWatchlogPosts(
@@ -273,7 +280,7 @@ export async function undoWatchlogPosts(
 ): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const stats = await removeWatchlogPosts();
   writeAudit({
@@ -283,16 +290,16 @@ export async function undoWatchlogPosts(
   });
   refresh();
   if (stats.error) {
-    return { error: stats.error };
+    return reply({ error: stats.error });
   }
   if (stats.removed === 0) {
-    return {
+    return reply({
       info: "Watchlog has not posted any plays to Trakt yet.",
-    };
+    });
   }
-  return {
+  return reply({
     info: `Removed ${stats.removed} Watchlog-posted plays from Trakt.`,
-  };
+  });
 }
 
 export async function retryWatchEvent(
@@ -300,11 +307,11 @@ export async function retryWatchEvent(
 ): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return blocked;
+    return reply(blocked);
   }
   const eventId = String(formData.get("eventId") ?? "");
   if (!eventId) {
-    return { error: "Missing play." };
+    return reply({ error: "Missing play." });
   }
   getDb()
     .update(syncRecords)
@@ -323,7 +330,7 @@ export async function retryWatchEvent(
     force: true,
   });
   refresh();
-  return syncJobFlash(stats, true);
+  return reply(syncJobFlash(stats, true));
 }
 
 function syncJobFlash(stats: SyncStats, onePlay = false): SyncActionState {

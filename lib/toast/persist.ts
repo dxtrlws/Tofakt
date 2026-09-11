@@ -1,0 +1,41 @@
+import { cache } from "react";
+import {
+  deleteSetting,
+  getSettingJson,
+  setSettingJson,
+} from "../data/settings";
+import { type ActionFlash, flashToToast, type ToastInput } from "./flash";
+
+const KEY = "ui.toast";
+
+export type ToastSeedPayload = ToastInput & { nonce?: number };
+
+export function persistToast(flash: ActionFlash & { flow?: unknown }): void {
+  const mapped = flashToToast(flash);
+  if (!mapped) {
+    return;
+  }
+  setSettingJson(KEY, { ...mapped, nonce: Date.now() });
+}
+
+export const takeToastCookie = cache((): ToastSeedPayload | null => {
+  const parsed = getSettingJson<ToastSeedPayload>(KEY);
+  if (
+    !parsed?.message ||
+    (parsed.level !== "ok" &&
+      parsed.level !== "warn" &&
+      parsed.level !== "error")
+  ) {
+    return null;
+  }
+  if (parsed.nonce && Date.now() - parsed.nonce > 10_000) {
+    deleteSetting(KEY);
+    return null;
+  }
+  return parsed;
+});
+
+export function reply<T extends ActionFlash>(flash: T): T {
+  persistToast(flash);
+  return flash;
+}

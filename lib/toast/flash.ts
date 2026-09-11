@@ -1,4 +1,4 @@
-export type ToastLevel = "ok" | "warn" | "error";
+export type ToastLevel = "ok" | "warn" | "error" | "busy";
 
 export type ActionFlash = {
   error?: string;
@@ -7,7 +7,7 @@ export type ActionFlash = {
 };
 
 export type ToastInput = {
-  level: ToastLevel;
+  level: Exclude<ToastLevel, "busy">;
   message: string;
 };
 

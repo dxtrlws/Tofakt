@@ -1,13 +1,20 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { BusyLabel } from "@/components/toast/busy-label";
 import { useToastAction } from "@/components/toast/use-toast-action";
 import { runIngestNow } from "@/lib/ingest/actions";
 
 export function RunIngestButton() {
-  const [, action] = useToastAction(runIngestNow);
+  const [, action, pending] = useToastAction(runIngestNow, {
+    busy: "Ingesting plays…",
+  });
   return (
-    <form action={action} className="flex items-center gap-3">
+    <form
+      action={action}
+      aria-busy={pending || undefined}
+      className="flex items-center gap-3"
+    >
       <IngestHint />
       <Submit />
     </form>
@@ -61,12 +68,13 @@ function Submit() {
   const { pending } = useFormStatus();
   return (
     <button
+      aria-busy={pending || undefined}
       aria-describedby="run-ingest-hint"
       className="rounded-md border border-border bg-bg-overlay px-3.5 py-2 text-ui font-medium leading-[18px] text-fg"
       disabled={pending}
       type="submit"
     >
-      {pending ? "Ingesting…" : "Run ingest"}
+      <BusyLabel busy="Ingesting…" idle="Run ingest" pending={pending} />
     </button>
   );
 }

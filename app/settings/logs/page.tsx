@@ -1,5 +1,6 @@
 import { CopyReport } from "@/components/settings/copy-report";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
+import { ToastSeedHost } from "@/components/toast/seed-host";
 import { copyReport, jobStatusText } from "@/lib/about/about";
 import { formatStamp } from "@/lib/about/about-format";
 import {
@@ -21,6 +22,7 @@ export default async function LogsPage() {
 
   return (
     <>
+      <ToastSeedHost />
       <SettingsTabs current="logs" />
       <div className="flex flex-col gap-4 px-4 pb-12 pt-5 md:px-8">
         <section className="flex flex-col gap-3 rounded-lg border border-border bg-bg-raised p-5">

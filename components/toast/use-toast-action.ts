@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useRef } from "react";
 import type { ActionFlash } from "@/lib/toast/flash";
-import { beginBusyToast, endBusyToast, toastFromAction } from "./store";
+import { beginBusyToast, endBusyToast } from "./store";
 
 type ActionFn<S extends ActionFlash> = (
   prev: S | undefined,
@@ -27,49 +27,32 @@ export async function runWithBusyToast<T extends ActionFlash>(
   }
 }
 
-function maybeToast(
-  flash: ActionFlash,
-  errors: "toast" | "inline" | undefined,
-) {
-  if (errors === "inline" && flash.error) {
-    return;
-  }
-  toastFromAction(flash);
-}
-
+/**
+ * Busy → result toasts are tied to the async action promise, not a useEffect on
+ * the form component, so navigating away mid-job still completes the toast.
+ */
 export function useToastAction<S extends ActionFlash>(
   action: ActionFn<S>,
   options?: { busy?: string; errors?: "toast" | "inline" },
 ) {
   const optionsRef = useRef(options);
   optionsRef.current = options;
-  const [state, dispatch, pending] = useActionState(action, undefined);
-  const seen = useRef<S | undefined>(undefined);
-  const busyId = useRef<string | null>(null);
+  const actionRef = useRef(action);
+  actionRef.current = action;
 
-  useEffect(() => {
-    if (!pending) {
-      return;
-    }
-    if (!busyId.current) {
-      busyId.current = beginBusyToast(optionsRef.current?.busy ?? "Working…");
-    }
-  }, [pending]);
+  const bound = useRef<ActionFn<S> | null>(null);
+  if (!bound.current) {
+    bound.current = (prev, form) => {
+      const opts = optionsRef.current;
+      return runWithBusyToast(
+        opts?.busy ?? "Working…",
+        () => actionRef.current(prev, form),
+        { errors: opts?.errors },
+      );
+    };
+  }
 
-  useEffect(() => {
-    if (!state || state === seen.current) {
-      return;
-    }
-    seen.current = state;
-    const errors = optionsRef.current?.errors;
-    if (busyId.current) {
-      endBusyToast(busyId.current, state, { errors });
-      busyId.current = null;
-      return;
-    }
-    maybeToast(state, errors);
-  }, [state]);
-
+  const [state, dispatch, pending] = useActionState(bound.current, undefined);
   return [state, dispatch, pending] as const;
 }
 

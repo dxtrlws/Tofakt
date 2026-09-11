@@ -108,8 +108,7 @@ export async function saveSyncPrefs(
     },
   });
   restartScheduler();
-  refresh();
-  return reply({ info: "Sync preferences saved." });
+  return reply({ info: "Sync preferences saved." }, refresh);
 }
 
 export async function setSyncMode(
@@ -132,8 +131,7 @@ export async function setSyncMode(
     const flash = {
       info: "Manual mode. Eligible plays are pending until you run a job or sync a row. Nothing is sent automatically.",
     };
-    refresh();
-    return reply(flash);
+    return reply(flash, refresh);
   }
   if (mode === "forward") {
     const cutoff = new Date();
@@ -150,8 +148,7 @@ export async function setSyncMode(
     const flash = {
       info: "Only plays that finish after now will queue as pending. Nothing is sent until you run a sync. Older plays stay Not synced unless you sync a row.",
     };
-    refresh();
-    return reply(flash);
+    return reply(flash, refresh);
   }
   if (mode === "backfill") {
     return reply({ error: "Confirm the backfill preview first." });
@@ -178,10 +175,12 @@ export async function confirmBackfill(
     subjectType: "settings",
     detail: { eligible: preview.eligible },
   });
-  refresh();
-  return reply({
-    info: `Queued ${preview.eligible} plays for Trakt. Run sync to send them.`,
-  });
+  return reply(
+    {
+      info: `Queued ${preview.eligible} plays for Trakt. Run sync to send them.`,
+    },
+    refresh,
+  );
 }
 
 export async function runSyncNow(
@@ -193,8 +192,7 @@ export async function runSyncNow(
     return reply(blocked);
   }
   const stats = await runSync({ force: true });
-  refresh();
-  return reply(syncJobFlash(stats));
+  return reply(syncJobFlash(stats), refresh);
 }
 
 export async function runReconcileNow(
@@ -211,13 +209,15 @@ export async function runReconcileNow(
     subjectType: "trakt",
     detail: { count: pulled.count, error: pulled.error },
   });
-  refresh();
   if (pulled.error) {
-    return reply({ error: pulled.error });
+    return reply({ error: pulled.error }, refresh);
   }
-  return reply({
-    info: `Loaded ${pulled.count} plays from Trakt history. Marked ${pulled.matched} already on Trakt.`,
-  });
+  return reply(
+    {
+      info: `Loaded ${pulled.count} plays from Trakt history. Marked ${pulled.matched} already on Trakt.`,
+    },
+    refresh,
+  );
 }
 
 export async function syncWatchEvent(
@@ -236,8 +236,7 @@ export async function syncWatchEvent(
     ignoreCutoff: true,
     force: true,
   });
-  refresh();
-  return reply(syncJobFlash(stats, true));
+  return reply(syncJobFlash(stats, true), refresh);
 }
 
 export async function removeWatchEvent(
@@ -261,17 +260,19 @@ export async function removeWatchEvent(
       detail: stats,
     });
   }
-  refresh();
   if (stats.error) {
-    return reply({ error: stats.error });
+    return reply({ error: stats.error }, refresh);
   }
   if (stats.removed === 0) {
-    return reply({
-      error:
-        "Could not remove this play from Trakt. Re-run reconciliation, then try again.",
-    });
+    return reply(
+      {
+        error:
+          "Could not remove this play from Trakt. Re-run reconciliation, then try again.",
+      },
+      refresh,
+    );
   }
-  return reply({ info: "Removed this play from Trakt." });
+  return reply({ info: "Removed this play from Trakt." }, refresh);
 }
 
 export async function undoWatchlogPosts(
@@ -288,18 +289,23 @@ export async function undoWatchlogPosts(
     subjectType: "trakt",
     detail: stats,
   });
-  refresh();
   if (stats.error) {
-    return reply({ error: stats.error });
+    return reply({ error: stats.error }, refresh);
   }
   if (stats.removed === 0) {
-    return reply({
-      info: "Watchlog has not posted any plays to Trakt yet.",
-    });
+    return reply(
+      {
+        info: "Watchlog has not posted any plays to Trakt yet.",
+      },
+      refresh,
+    );
   }
-  return reply({
-    info: `Removed ${stats.removed} Watchlog-posted plays from Trakt.`,
-  });
+  return reply(
+    {
+      info: `Removed ${stats.removed} Watchlog-posted plays from Trakt.`,
+    },
+    refresh,
+  );
 }
 
 export async function retryWatchEvent(
@@ -329,8 +335,7 @@ export async function retryWatchEvent(
     ignoreCutoff: true,
     force: true,
   });
-  refresh();
-  return reply(syncJobFlash(stats, true));
+  return reply(syncJobFlash(stats, true), refresh);
 }
 
 function syncJobFlash(stats: SyncStats, onePlay = false): SyncActionState {

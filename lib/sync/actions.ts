@@ -214,7 +214,7 @@ export async function runReconcileNow(
   }
   return reply(
     {
-      info: `Loaded ${pulled.count} plays from Trakt history. Marked ${pulled.matched} already on Trakt.`,
+      info: `Loaded ${pulled.count} plays from Trakt history. Pending plays stay pending until you run a sync.`,
     },
     refresh,
   );
@@ -252,7 +252,7 @@ export async function removeWatchEvent(
     return reply({ error: "Missing play." });
   }
   const stats = await removeOnePlay(eventId);
-  if (stats.removed > 0) {
+  if (stats.removed > 0 || stats.cleared > 0) {
     writeAudit({
       action: "sync.remove_play",
       subjectType: "watch_event",
@@ -263,16 +263,24 @@ export async function removeWatchEvent(
   if (stats.error) {
     return reply({ error: stats.error }, refresh);
   }
-  if (stats.removed === 0) {
+  if (stats.removed > 0) {
+    return reply({ info: "Removed this play from Trakt." }, refresh);
+  }
+  if (stats.cleared > 0) {
     return reply(
       {
-        error:
-          "Could not remove this play from Trakt. Re-run reconciliation, then try again.",
+        info: "This play was not on Trakt. Sync status was reset so you can sync it again.",
       },
       refresh,
     );
   }
-  return reply({ info: "Removed this play from Trakt." }, refresh);
+  return reply(
+    {
+      error:
+        "Could not remove this play from Trakt. Re-run reconciliation, then try again.",
+    },
+    refresh,
+  );
 }
 
 export async function undoWatchlogPosts(
@@ -292,7 +300,7 @@ export async function undoWatchlogPosts(
   if (stats.error) {
     return reply({ error: stats.error }, refresh);
   }
-  if (stats.removed === 0) {
+  if (stats.removed === 0 && stats.cleared === 0) {
     return reply(
       {
         info: "Watchlog has not posted any plays to Trakt yet.",
@@ -300,9 +308,18 @@ export async function undoWatchlogPosts(
       refresh,
     );
   }
+  const parts: string[] = [];
+  if (stats.removed > 0) {
+    parts.push(`Removed ${stats.removed} Watchlog-posted plays from Trakt`);
+  }
+  if (stats.cleared > 0) {
+    parts.push(
+      `reset ${stats.cleared} that were not on Trakt so they can sync again`,
+    );
+  }
   return reply(
     {
-      info: `Removed ${stats.removed} Watchlog-posted plays from Trakt.`,
+      info: `${parts.join(", ")}.`,
     },
     refresh,
   );

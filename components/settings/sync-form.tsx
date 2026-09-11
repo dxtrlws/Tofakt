@@ -176,7 +176,7 @@ export function SyncSettingsForm({
           />
         </PrefRow>
         <PrefRow
-          hint="How often Watchlog downloads Trakt history and matches it to this ledger. This does not post plays."
+          hint="How often Watchlog downloads Trakt history for reviews and duplicate checks. This does not post plays or change sync status."
           label="Reconciliation"
         >
           <ScheduleSelect
@@ -308,9 +308,9 @@ export function SyncSettingsForm({
           </div>
         </div>
         <p className="text-meta leading-meta text-fg-muted">
-          Downloads your Trakt watch history and matches it to this ledger.
-          Plays already on Trakt are marked synced and will not be sent again.
-          This does not add or remove anything on Trakt.
+          Downloads your Trakt watch history for reviews and duplicate checks.
+          This does not add, remove, or mark local plays as synced. Matching
+          happens when you run a sync.
         </p>
       </section>
 

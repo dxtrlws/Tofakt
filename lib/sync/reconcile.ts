@@ -30,7 +30,6 @@ import {
   type TraktHistoryItem,
   traktGetHistoryPage,
 } from "../trakt/history";
-import { markAlreadyOnTrakt } from "./already";
 import type { SnapshotPlay } from "./match";
 import { getSyncSettings } from "./settings";
 
@@ -49,13 +48,11 @@ export type SnapshotRow = {
 
 let inFlight: Promise<{
   count: number;
-  matched: number;
   error?: string;
 }> | null = null;
 
 export async function pullTraktHistory(): Promise<{
   count: number;
-  matched: number;
   error?: string;
 }> {
   if (inFlight) {
@@ -72,7 +69,6 @@ export async function pullTraktHistory(): Promise<{
 
 async function pullTraktHistoryUnlocked(): Promise<{
   count: number;
-  matched: number;
   error?: string;
 }> {
   await refreshDueTokens();
@@ -80,7 +76,7 @@ async function pullTraktHistoryUnlocked(): Promise<{
   const app = row ? readTraktAppSecrets(row) : null;
   let token = row ? readAccessToken(row) : null;
   if (!app || !token) {
-    return { count: 0, matched: 0, error: "Trakt is not connected." };
+    return { count: 0, error: "Trakt is not connected." };
   }
   const fetchedAt = new Date();
   const items: SnapshotRow[] = [];
@@ -132,21 +128,18 @@ async function pullTraktHistoryUnlocked(): Promise<{
     if (err instanceof ZodError) {
       return {
         count: 0,
-        matched: 0,
         error: "Trakt sent a history page Watchlog could not parse.",
       };
     }
     const message =
       err instanceof Error ? err.message : "Trakt history failed.";
-    return { count: 0, matched: 0, error: message };
+    return { count: 0, error: message };
   }
   replaceSnapshots(items, fetchedAt);
-  const matched = markAlreadyOnTrakt(items.map(toSnapshotPlay));
-  logger.info(
-    { count: items.length, matched },
-    "Stored Trakt history snapshot",
-  );
-  return { count: items.length, matched };
+  // Reconciliation only refreshes the snapshot. Matching pending plays as
+  // already_on_trakt waits for an explicit Run sync now / Sync now.
+  logger.info({ count: items.length }, "Stored Trakt history snapshot");
+  return { count: items.length };
 }
 
 function recordReconcileJob(

@@ -216,6 +216,7 @@ describe("removeOnePlay", () => {
     expect(stats).toMatchObject({
       considered: 1,
       removed: 1,
+      cleared: 0,
       skipped: 0,
     });
     expect(stats.error).toBeUndefined();
@@ -226,7 +227,7 @@ describe("removeOnePlay", () => {
     expect(row?.skipReason).toBeNull();
   });
 
-  it("does not call Trakt when the history id cannot be resolved", async () => {
+  it("clears local synced status when the history id cannot be resolved", async () => {
     const eventId = seedPlay({
       key: "posted",
       status: "synced",
@@ -236,14 +237,16 @@ describe("removeOnePlay", () => {
     const stats = await removeOnePlay(eventId);
     expect(ctx.removes).toEqual([]);
     expect(stats.removed).toBe(0);
-    expect(stats.skipped).toBe(1);
-    expect(stats.error).toMatch(/could not find this play on trakt/i);
+    expect(stats.cleared).toBe(1);
+    expect(stats.skipped).toBe(0);
+    expect(stats.error).toBeUndefined();
     const row = recordFor(eventId);
-    expect(row?.status).toBe("synced");
+    expect(row?.status).toBe("pending");
     expect(row?.remoteId).toBeNull();
+    expect(row?.skipReason).toBeNull();
   });
 
-  it("keeps the local row synced when Trakt reports the id not found", async () => {
+  it("clears local synced status when Trakt reports the id not found", async () => {
     const eventId = seedPlay({
       key: "posted",
       status: "synced",
@@ -262,9 +265,30 @@ describe("removeOnePlay", () => {
     const stats = await removeOnePlay(eventId);
     expect(ctx.removes).toEqual([{ ids: [441] }]);
     expect(stats.removed).toBe(0);
-    expect(stats.error).toMatch(/did not find this play/i);
+    expect(stats.cleared).toBe(1);
+    expect(stats.error).toBeUndefined();
     const row = recordFor(eventId);
-    expect(row?.status).toBe("synced");
-    expect(row?.remoteId).toBe("441");
+    expect(row?.status).toBe("pending");
+    expect(row?.remoteId).toBeNull();
+    expect(row?.skipReason).toBeNull();
+  });
+
+  it("holds a cleared play at before_cutoff under Newly watched only", async () => {
+    const { saveSyncSettings } = await import("./settings");
+    saveSyncSettings({
+      mode: "forward",
+      cutoffIso: "2026-09-10T00:00:00.000Z",
+    });
+    const eventId = seedPlay({
+      key: "posted",
+      status: "synced",
+      skipReason: WATCHLOG_POSTED,
+      remoteId: null,
+    });
+    const stats = await removeOnePlay(eventId);
+    expect(stats.cleared).toBe(1);
+    const row = recordFor(eventId);
+    expect(row?.status).toBe("skipped");
+    expect(row?.skipReason).toBe("before_cutoff");
   });
 });

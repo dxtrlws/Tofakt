@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { toastFromAction } from "@/components/toast/store";
+import { useToastAction } from "@/components/toast/use-toast-action";
 import {
   type ConnectionActionState,
   saveTofaApiKey,
@@ -15,7 +17,6 @@ import {
   fieldClass,
   ghostBtn,
   NextStep,
-  Note,
   outlineBtn,
   primaryBtn,
   SavedSecret,
@@ -24,18 +25,10 @@ import { statusClass, statusDotClass } from "./status";
 
 export function TofaCard({ connection }: { connection: PublicConnection }) {
   const router = useRouter();
-  const [urlState, saveUrl, urlPending] = useActionState(
-    saveTofaUrl,
-    undefined,
-  );
-  const [keyState, saveKey, keyPending] = useActionState(
-    saveTofaApiKey,
-    undefined,
-  );
+  const [urlState, saveUrl, urlPending] = useToastAction(saveTofaUrl);
+  const [keyState, saveKey, keyPending] = useToastAction(saveTofaApiKey);
   const [replace, setReplace] = useState(!connection.hasSecret);
   const [flow, setFlow] = useState<ConnectionActionState["flow"]>();
-  const [localError, setLocalError] = useState<string | undefined>();
-  const [localInfo, setLocalInfo] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -108,7 +101,6 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
           </button>
         </div>
       </form>
-      <Note error={urlState?.error} info={urlState?.info} />
 
       {hasUrl && !authorized && connection.status !== "down" ? (
         <NextStep>
@@ -147,7 +139,6 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
           }
         />
       ) : null}
-      <Note error={keyState?.error} info={keyState?.info} />
 
       {authorized && connection.status !== "ok" ? (
         <p className="text-ui leading-[18px] text-fg-muted">
@@ -162,12 +153,9 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
             disabled={busy}
             onClick={() => {
               setBusy(true);
-              setLocalError(undefined);
-              setLocalInfo(undefined);
               void startTofaDeviceFlow().then((result) => {
                 setBusy(false);
-                setLocalError(result.error);
-                setLocalInfo(result.info);
+                toastFromAction(result);
                 setFlow(result.flow);
               });
             }}
@@ -181,12 +169,9 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
           disabled={busy || !authorized}
           onClick={() => {
             setBusy(true);
-            setLocalError(undefined);
-            setLocalInfo(undefined);
             void testTofaConnection().then((result) => {
               setBusy(false);
-              setLocalError(result.error);
-              setLocalInfo(result.info);
+              toastFromAction(result);
               router.refresh();
             });
           }}
@@ -214,12 +199,9 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
             disabled={busy || !hasUrl}
             onClick={() => {
               setBusy(true);
-              setLocalError(undefined);
-              setLocalInfo(undefined);
               void startTofaDeviceFlow().then((result) => {
                 setBusy(false);
-                setLocalError(result.error);
-                setLocalInfo(result.info);
+                toastFromAction(result);
                 setFlow(result.flow);
               });
             }}
@@ -234,7 +216,6 @@ export function TofaCard({ connection }: { connection: PublicConnection }) {
           Test connection is available after an API key or device flow.
         </p>
       ) : null}
-      <Note error={localError} info={localInfo} />
       {flow ? (
         <DeviceFlowPanel
           flow={flow}

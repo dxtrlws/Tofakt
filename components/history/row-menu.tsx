@@ -1,7 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import {
+  useToastAction,
+  withToastForm,
+} from "@/components/toast/use-toast-action";
 import { ignoreWatchEvent, unignoreWatchEvent } from "@/lib/ingest/actions";
 import {
   removeWatchEvent,
@@ -11,6 +15,11 @@ import {
 
 const itemClass =
   "w-full rounded-sm px-3 py-2 text-left text-ui text-fg hover:bg-bg-overlay-strong";
+
+const syncNow = withToastForm(syncWatchEvent);
+const retryNow = withToastForm(retryWatchEvent);
+const ignoreNow = withToastForm(ignoreWatchEvent);
+const unignoreNow = withToastForm(unignoreWatchEvent);
 
 export function RowMenu({
   eventId,
@@ -23,10 +32,7 @@ export function RowMenu({
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const confirmId = useId();
-  const [removeState, removeAction] = useActionState(
-    removeWatchEvent,
-    undefined,
-  );
+  const [removeState, removeAction] = useToastAction(removeWatchEvent);
   const canSync = status !== "synced" && !ignored;
   const canRemove = status === "synced";
 
@@ -71,9 +77,7 @@ export function RowMenu({
         ) : null}
         <div className={canRemove ? "peer-checked:hidden" : undefined}>
           {canSync ? (
-            <form
-              action={status === "failed" ? retryWatchEvent : syncWatchEvent}
-            >
+            <form action={status === "failed" ? retryNow : syncNow}>
               <input name="eventId" type="hidden" value={eventId} />
               <button className={itemClass} type="submit">
                 {status === "failed" ? "Retry" : "Sync now"}
@@ -88,7 +92,7 @@ export function RowMenu({
               Remove from Trakt
             </label>
           ) : null}
-          <form action={ignored ? unignoreWatchEvent : ignoreWatchEvent}>
+          <form action={ignored ? unignoreNow : ignoreNow}>
             <input name="eventId" type="hidden" value={eventId} />
             <button className={itemClass} type="submit">
               {ignored ? "Unignore" : "Ignore"}
@@ -102,11 +106,6 @@ export function RowMenu({
               Remove this one play from Trakt? Other watches of the same title
               stay.
             </p>
-            {removeState?.error ? (
-              <p className="px-3 pb-1 text-meta text-sync-failed" role="alert">
-                {removeState.error}
-              </p>
-            ) : null}
             <RemoveSubmit />
             <label
               className={`${itemClass} block cursor-pointer`}

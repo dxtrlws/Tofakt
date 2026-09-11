@@ -1,14 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { toastFromAction } from "@/components/toast/store";
+import { useToastAction } from "@/components/toast/use-toast-action";
 import { saveTmdb, testTmdbConnection } from "@/lib/connections/actions";
 import type { PublicConnection } from "@/lib/connections/types";
 import {
   fieldClass,
   ghostBtn,
   NextStep,
-  Note,
   outlineBtn,
   primaryBtn,
   SavedSecret,
@@ -17,10 +18,8 @@ import { statusClass, statusDotClass } from "./status";
 
 export function TmdbCard({ connection }: { connection: PublicConnection }) {
   const router = useRouter();
-  const [state, action, pending] = useActionState(saveTmdb, undefined);
+  const [state, action, pending] = useToastAction(saveTmdb);
   const [replace, setReplace] = useState(!connection.hasSecret);
-  const [localError, setLocalError] = useState<string | undefined>();
-  const [localInfo, setLocalInfo] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -93,7 +92,6 @@ export function TmdbCard({ connection }: { connection: PublicConnection }) {
       ) : (
         <SavedSecret label={`API key saved · region ${region}`} />
       )}
-      <Note error={state?.error} info={state?.info} />
 
       {saved && connection.status !== "ok" ? (
         <NextStep>
@@ -112,12 +110,9 @@ export function TmdbCard({ connection }: { connection: PublicConnection }) {
           disabled={pending || busy || !saved}
           onClick={() => {
             setBusy(true);
-            setLocalError(undefined);
-            setLocalInfo(undefined);
             void testTmdbConnection().then((result) => {
               setBusy(false);
-              setLocalError(result.error);
-              setLocalInfo(result.info);
+              toastFromAction(result);
               router.refresh();
             });
           }}
@@ -141,7 +136,6 @@ export function TmdbCard({ connection }: { connection: PublicConnection }) {
           Test connection is available after you save a key.
         </p>
       ) : null}
-      <Note error={localError} info={localInfo} />
     </section>
   );
 }

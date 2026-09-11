@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { PrefSelect } from "@/components/settings/pref-select";
+import { useToastAction } from "@/components/toast/use-toast-action";
 import {
   confirmBackfill,
   runReconcileNow,
@@ -66,15 +67,12 @@ export function SyncSettingsForm({
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [undoOpen, setUndoOpen] = useState(false);
-  const [modeState, modeAction] = useActionState(setSyncMode, undefined);
-  const [prefsState, prefsAction] = useActionState(saveSyncPrefs, undefined);
-  const [syncState, syncAction] = useActionState(runSyncNow, undefined);
-  const [reconState, reconAction] = useActionState(runReconcileNow, undefined);
-  const [backfillState, backfillAction] = useActionState(
-    confirmBackfill,
-    undefined,
-  );
-  const [undoState, undoAction] = useActionState(undoWatchlogPosts, undefined);
+  const [, modeAction] = useToastAction(setSyncMode);
+  const [, prefsAction] = useToastAction(saveSyncPrefs);
+  const [, syncAction] = useToastAction(runSyncNow);
+  const [, reconAction] = useToastAction(runReconcileNow);
+  const [, backfillAction] = useToastAction(confirmBackfill);
+  const [, undoAction] = useToastAction(undoWatchlogPosts);
 
   return (
     <div className="flex flex-col gap-4">
@@ -130,8 +128,6 @@ export function SyncSettingsForm({
             </span>
           </span>
         </button>
-        <Flash error={modeState?.error} info={modeState?.info} />
-        <Flash error={backfillState?.error} info={backfillState?.info} />
       </section>
 
       <form
@@ -262,7 +258,6 @@ export function SyncSettingsForm({
           </div>
         ) : null}
         <SavePrefs />
-        <Flash error={prefsState?.error} info={prefsState?.info} />
       </form>
 
       <section className={card}>
@@ -292,9 +287,6 @@ export function SyncSettingsForm({
           Plays already on Trakt are marked synced and will not be sent again.
           This does not add or remove anything on Trakt.
         </p>
-        <Flash error={syncState?.error} info={syncState?.info} />
-        <Flash error={reconState?.error} info={reconState?.info} />
-        <Flash error={undoState?.error} info={undoState?.info} />
       </section>
 
       {previewOpen ? (
@@ -534,20 +526,6 @@ function JobButton({
       {pending ? "Working…" : label}
     </button>
   );
-}
-
-function Flash({ error, info }: { error?: string; info?: string }) {
-  if (error) {
-    return (
-      <p className="text-ui text-sync-failed" role="alert">
-        {error}
-      </p>
-    );
-  }
-  if (info) {
-    return <p className="text-ui text-accent">{info}</p>;
-  }
-  return null;
 }
 
 function formatRange(startIso: string, endIso: string): string {

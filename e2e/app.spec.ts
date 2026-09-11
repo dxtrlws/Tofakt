@@ -54,12 +54,22 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
 
   await test.step("change sync mode then restore manual", async () => {
     await page.goto("/settings/sync");
+    const notices = page.getByRole("region", { name: "Notifications" });
     await page.getByRole("radio", { name: /^Newly watched only/ }).check();
     await expect(
-      page.getByText(/Only plays that finish after now will queue/),
+      notices.getByText(/Only plays that finish after now will queue/),
     ).toBeVisible();
+    await page
+      .getByRole("banner")
+      .getByRole("link", { name: "History" })
+      .click();
+    await expect(page).toHaveURL("/history");
+    await expect(
+      notices.getByText(/Only plays that finish after now will queue/),
+    ).toBeVisible();
+    await page.goto("/settings/sync");
     await page.getByRole("radio", { name: /^Manual/ }).check();
-    await expect(page.getByText(/Manual mode/)).toBeVisible();
+    await expect(notices.getByText(/Manual mode/)).toBeVisible();
   });
 
   await test.step("ingest, run sync, open monthly review", async () => {
@@ -69,7 +79,10 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
 
     await page.goto("/settings/sync");
     await page.getByRole("button", { name: "Run sync now" }).click();
-    await expect(page.getByText(/Synced /)).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("banner").getByRole("link", { name: "Home" }).click();
+    await expect(
+      page.getByRole("region", { name: "Notifications" }).getByText(/Synced /),
+    ).toBeVisible({ timeout: 30_000 });
 
     await page.goto("/monthly");
     await expect(

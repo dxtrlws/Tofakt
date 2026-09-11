@@ -1,21 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useToastAction } from "@/components/toast/use-toast-action";
 import { runIngestNow } from "@/lib/ingest/actions";
 
 export function RunIngestButton() {
-  const [state, action] = useActionState(runIngestNow, undefined);
+  const [, action] = useToastAction(runIngestNow);
   return (
     <form action={action} className="flex items-center gap-3">
-      {state?.error ? (
-        <p className="text-meta text-sync-failed" role="alert">
-          {state.error}
-        </p>
-      ) : null}
-      {state?.info ? (
-        <p className="text-meta text-fg-muted">{state.info}</p>
-      ) : null}
       <IngestHint />
       <Submit />
     </form>

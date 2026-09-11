@@ -6,6 +6,7 @@ import { assertSameOrigin } from "../auth/csrf";
 import { requireUser } from "../auth/require";
 import { UpstreamError } from "../net/fetch-json";
 import { parseTofaBaseUrl } from "../net/ssrf";
+import type { ActionFlash } from "../toast/flash";
 import { tofaPollDeviceToken, tofaStartDeviceCode } from "../tofa/client";
 import { traktPollDeviceToken, traktStartDeviceCode } from "../trakt/client";
 import {
@@ -35,9 +36,7 @@ import {
 } from "./store";
 import type { PublicConnection } from "./types";
 
-export type ConnectionActionState = {
-  error?: string;
-  info?: string;
+export type ConnectionActionState = ActionFlash & {
   flow?: {
     id: string;
     userCode: string;

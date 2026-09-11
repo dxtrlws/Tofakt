@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { PrefSelect } from "@/components/settings/pref-select";
+import { useToastAction } from "@/components/toast/use-toast-action";
 import {
   cancelImportAction,
   clearSyncAction,
@@ -48,33 +49,20 @@ export function DataSettingsForm({
   const [zone, setZone] = useState(timezone);
   const [week, setWeek] = useState(weekStarts);
   const [partials, setPartials] = useState(countPartials ? "on" : "off");
-  const [prefsState, prefsAction] = useActionState(
-    saveDataPrefsAction,
-    undefined,
-  );
-  const [importState, importAction] = useActionState(
-    previewImportAction,
-    undefined,
-  );
-  const [confirmState, confirmAction] = useActionState(
-    confirmImportAction,
-    undefined,
-  );
-  const [cancelState, cancelAction] = useActionState(
-    cancelImportAction,
-    undefined,
-  );
-  const [clearState, clearAction, clearPending] = useActionState(
+  const [, prefsAction] = useToastAction(saveDataPrefsAction);
+  const [, importAction] = useToastAction(previewImportAction);
+  const [, confirmAction] = useToastAction(confirmImportAction);
+  const [, cancelAction] = useToastAction(cancelImportAction);
+  const [clearState, clearAction, clearPending] = useToastAction(
     clearSyncAction,
-    undefined,
+    { errors: "inline" },
   );
-  const [wipeState, wipeAction, wipePending] = useActionState(
-    wipeLocalAction,
-    undefined,
-  );
-  const [forgetState, forgetAction, forgetPending] = useActionState(
+  const [wipeState, wipeAction, wipePending] = useToastAction(wipeLocalAction, {
+    errors: "inline",
+  });
+  const [forgetState, forgetAction, forgetPending] = useToastAction(
     forgetConnectionAction,
-    undefined,
+    { errors: "inline" },
   );
 
   useCloseOnSuccess(danger === "clear", clearPending, clearState?.info, () =>
@@ -136,7 +124,6 @@ export function DataSettingsForm({
             value={partials}
           />
         </PrefRow>
-        <Flash error={prefsState?.error} info={prefsState?.info} />
       </form>
 
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-bg-raised p-5">
@@ -189,9 +176,6 @@ export function DataSettingsForm({
             </form>
           </div>
         ) : null}
-        <Flash error={importState?.error} info={importState?.info} />
-        <Flash error={confirmState?.error} info={confirmState?.info} />
-        <Flash error={cancelState?.error} info={cancelState?.info} />
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-sync-failed bg-bg-raised p-5">
@@ -220,9 +204,6 @@ export function DataSettingsForm({
           onClick={() => setDanger("forget")}
           title="Forget a connection"
         />
-        <Flash error={clearState?.error} info={clearState?.info} />
-        <Flash error={wipeState?.error} info={wipeState?.info} />
-        <Flash error={forgetState?.error} info={forgetState?.info} />
       </section>
 
       {danger === "clear" ? (
@@ -463,18 +444,4 @@ function useCloseOnSuccess(
       onClose();
     }
   }, [info, onClose, open, pending]);
-}
-
-function Flash({ error, info }: { error?: string; info?: string }) {
-  if (error) {
-    return (
-      <p className="pb-2 text-ui text-sync-failed" role="alert">
-        {error}
-      </p>
-    );
-  }
-  if (info) {
-    return <p className="pb-2 text-ui text-accent">{info}</p>;
-  }
-  return null;
 }

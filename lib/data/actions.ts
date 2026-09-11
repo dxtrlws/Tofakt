@@ -5,6 +5,7 @@ import { assertSameOrigin } from "../auth/csrf";
 import { requireUser } from "../auth/require";
 import type { Provider } from "../connections/types";
 import { timezone } from "../ingest/run";
+import type { ActionFlash } from "../toast/flash";
 import { clearSyncRecords, forgetProvider, wipeLocalHistory } from "./danger";
 import {
   cancelImportPreview,
@@ -14,7 +15,7 @@ import {
 } from "./history-file";
 import { saveDataPrefs } from "./prefs";
 
-export type DataActionState = { error?: string; info?: string };
+export type DataActionState = ActionFlash;
 
 const MAX_IMPORT_BYTES = 20 * 1024 * 1024;
 

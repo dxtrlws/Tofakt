@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { toastFromAction } from "@/components/toast/store";
+import { useToastAction } from "@/components/toast/use-toast-action";
 import {
   beginTraktDeviceFlow,
   type ConnectionActionState,
@@ -14,7 +16,6 @@ import {
   fieldClass,
   ghostBtn,
   NextStep,
-  Note,
   outlineBtn,
   primaryBtn,
   SavedSecret,
@@ -29,18 +30,11 @@ export function TraktCard({
   pending?: ConnectionActionState["flow"];
 }) {
   const router = useRouter();
-  const [appState, saveApp, appPending] = useActionState(
-    saveTraktApp,
-    undefined,
-  );
-  const [flowState, beginFlow, flowPending] = useActionState(
-    beginTraktDeviceFlow,
-    undefined,
-  );
+  const [appState, saveApp, appPending] = useToastAction(saveTraktApp);
+  const [flowState, beginFlow, flowPending] =
+    useToastAction(beginTraktDeviceFlow);
   const [replace, setReplace] = useState(!connection.hasClientCredentials);
   const [flow, setFlow] = useState<ConnectionActionState["flow"]>();
-  const [localError, setLocalError] = useState<string | undefined>();
-  const [localInfo, setLocalInfo] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -138,7 +132,6 @@ export function TraktCard({
       ) : (
         <SavedSecret label="Client ID and secret saved" />
       )}
-      <Note error={appState?.error} info={appState?.info} />
 
       {credentialsSaved && !authorized ? (
         <NextStep>
@@ -171,12 +164,9 @@ export function TraktCard({
           disabled={busy || !authorized}
           onClick={() => {
             setBusy(true);
-            setLocalError(undefined);
-            setLocalInfo(undefined);
             void testTraktConnection().then((result) => {
               setBusy(false);
-              setLocalError(result.error);
-              setLocalInfo(result.info);
+              toastFromAction(result);
               router.refresh();
             });
           }}
@@ -215,7 +205,6 @@ export function TraktCard({
           Test connection is available after you authorize.
         </p>
       ) : null}
-      <Note error={localError ?? flowState?.error} info={localInfo} />
       {shown ? (
         <DeviceFlowPanel
           flow={shown}

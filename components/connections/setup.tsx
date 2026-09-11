@@ -20,17 +20,3 @@ export function NextStep({ children }: { children: ReactNode }) {
     </p>
   );
 }
-
-export function Note({ error, info }: { error?: string; info?: string }) {
-  if (error) {
-    return (
-      <p className="text-ui text-sync-failed" role="alert">
-        {error}
-      </p>
-    );
-  }
-  if (info) {
-    return <p className="text-ui text-accent">{info}</p>;
-  }
-  return null;
-}

@@ -11,6 +11,7 @@ import { getDb } from "../db";
 import { jobs, syncRecords } from "../db/schema";
 import { getIngestSettings } from "../ingest/run";
 import { restartScheduler } from "../scheduler";
+import type { ActionFlash } from "../toast/flash";
 import { tofaLibraries } from "../tofa/client";
 import {
   applyForwardCutoff,
@@ -19,7 +20,7 @@ import {
 } from "./preview";
 import { pullTraktHistory } from "./reconcile";
 import { removeOnePlay, removeWatchlogPosts } from "./remove";
-import { runSync } from "./run";
+import { runSync, type SyncStats } from "./run";
 import {
   INGEST_INTERVAL_MAX,
   INGEST_INTERVAL_MIN,
@@ -29,7 +30,7 @@ import {
 } from "./schedule";
 import { getSyncSettings, type SyncMode, saveSyncSettings } from "./settings";
 
-export type SyncActionState = { error?: string; info?: string };
+export type SyncActionState = ActionFlash;
 
 async function guard() {
   await requireUser();
@@ -186,12 +187,7 @@ export async function runSyncNow(
   }
   const stats = await runSync({ force: true });
   refresh();
-  if (stats.error) {
-    return { error: stats.error };
-  }
-  return {
-    info: `Synced ${stats.synced} (${stats.alreadyOnTrakt} already on Trakt, ${stats.unmatched} unmatched).`,
-  };
+  return syncJobFlash(stats);
 }
 
 export async function runReconcileNow(
@@ -217,17 +213,24 @@ export async function runReconcileNow(
   };
 }
 
-export async function syncWatchEvent(formData: FormData): Promise<void> {
+export async function syncWatchEvent(
+  formData: FormData,
+): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return;
+    return blocked;
   }
   const eventId = String(formData.get("eventId") ?? "");
   if (!eventId) {
-    return;
+    return { error: "Missing play." };
   }
-  await runSync({ eventIds: [eventId], ignoreCutoff: true, force: true });
+  const stats = await runSync({
+    eventIds: [eventId],
+    ignoreCutoff: true,
+    force: true,
+  });
   refresh();
+  return syncJobFlash(stats, true);
 }
 
 export async function removeWatchEvent(
@@ -292,14 +295,16 @@ export async function undoWatchlogPosts(
   };
 }
 
-export async function retryWatchEvent(formData: FormData): Promise<void> {
+export async function retryWatchEvent(
+  formData: FormData,
+): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return;
+    return blocked;
   }
   const eventId = String(formData.get("eventId") ?? "");
   if (!eventId) {
-    return;
+    return { error: "Missing play." };
   }
   getDb()
     .update(syncRecords)
@@ -312,8 +317,39 @@ export async function retryWatchEvent(formData: FormData): Promise<void> {
     })
     .where(eq(syncRecords.watchEventId, eventId))
     .run();
-  await runSync({ eventIds: [eventId], ignoreCutoff: true, force: true });
+  const stats = await runSync({
+    eventIds: [eventId],
+    ignoreCutoff: true,
+    force: true,
+  });
   refresh();
+  return syncJobFlash(stats, true);
+}
+
+function syncJobFlash(stats: SyncStats, onePlay = false): SyncActionState {
+  if (stats.error) {
+    return { error: stats.error };
+  }
+  if (onePlay) {
+    if (stats.unmatched > 0) {
+      return {
+        info: "This play is unmatched. Trakt could not identify it.",
+        level: "warn",
+      };
+    }
+    if (stats.failed > 0) {
+      return { info: "This play failed to sync.", level: "warn" };
+    }
+    if (stats.synced > 0) {
+      return { info: "Synced this play." };
+    }
+    return { info: "Nothing to sync for this play." };
+  }
+  const info = `Synced ${stats.synced} (${stats.alreadyOnTrakt} already on Trakt, ${stats.unmatched} unmatched).`;
+  if (stats.unmatched > 0 || stats.failed > 0) {
+    return { info, level: "warn" };
+  }
+  return { info };
 }
 
 export async function listTofaLibraries() {

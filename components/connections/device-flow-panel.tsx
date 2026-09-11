@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toastFromAction } from "@/components/toast/store";
 import {
   type ConnectionActionState,
   pollDeviceFlow,
@@ -24,6 +25,7 @@ export function DeviceFlowPanel({
         return;
       }
       if (result.error) {
+        toastFromAction(result);
         setError(result.error);
         return;
       }
@@ -31,6 +33,7 @@ export function DeviceFlowPanel({
         result.info === "tofa connected." ||
         result.info === "Trakt connected."
       ) {
+        toastFromAction(result);
         onDone();
         return;
       }

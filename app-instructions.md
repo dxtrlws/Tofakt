@@ -145,7 +145,7 @@ A single Node process serving both the UI and the API, plus an in-process backgr
 │                                                            │
 │   Scheduler (in-process, 15s tick)                         │
 │   ├── ingest job     → tofa watch history (+ TMDB enrich)  │
-│   └── reconcile job  → Trakt history snapshot              │
+│   └── reconcile job  → Trakt history snapshot (no status)  │
 │   (no automatic sync job — pending waits for user action)  │
 │                                                            │
 │   SQLite (WAL) at /data/watchlog.db                        │
@@ -382,7 +382,7 @@ Thresholds are configurable. Duration fallbacks follow discovery rules when comp
 Three layers, all required:
 
 1. **Local ledger.** One `sync_record` per watch event with a unique constraint. A `synced` event is never sent again.
-2. **Pre-flight reconciliation.** Pull Trakt history into `trakt_history_snapshot` (scheduled when enabled, default off / every 60 minutes; also on demand). Match on `(external_id, watched_at within ±N minutes)`, default N = 30.
+2. **Pre-flight reconciliation.** Pull Trakt history into `trakt_history_snapshot` (scheduled when enabled, default off / every 60 minutes; also on demand). Match on `(external_id, watched_at within ±N minutes)`, default N = 30. Snapshot pulls alone do **not** change local sync status — matching pending/failed rows to `already_on_trakt` happens during user-initiated sync (`Run sync now` / Sync now).
 3. **Post-write confirmation.** Items `added` → `synced`; `not_found` → `unmatched`; unaccounted stay `pending`.
 
 ### 6.5 Timestamp semantics
@@ -415,6 +415,8 @@ Switching from forward-only to backfill clears `before_cutoff` skips and requeue
 ### 6.8 Manual actions
 
 **Shipped** on History rows: **Sync now**, **Retry**, **Ignore**, **Unignore**, **Remove from Trakt**.
+
+**Remove from Trakt.** If the play cannot be found on Trakt (no resolvable history id, or Trakt reports not found), clear the local `synced` status back to `pending` (or `skipped` / `before_cutoff` under forward mode) so the user can sync it again. Do not leave a stuck Synced row.
 
 **Not implemented** (do not claim otherwise in UI without building them):
 

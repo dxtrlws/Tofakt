@@ -26,7 +26,7 @@ Before the first backfill, Watchlog compares local plays with history already on
 
 **History.** The full ledger, grouped by day. Filter by date, movies or TV, sync state, and search. Each row shows the title, episode identity, when it was watched, and why it is synced, pending, skipped, failed, or unmatched. From a row you can sync now, retry, ignore, fix a match, or remove the play from Trakt.
 
-**Sync.** Three modes: everything, including a confirmed backfill of older history; newly watched only, from the moment you turn it on; or manual, where nothing posts until you say so. Completion thresholds, ingest schedule, and a reconciliation pass against Trakt are all settings. Ingest pulls from tofa. Reconciliation downloads Trakt history. Neither of those steps posts a play.
+**Sync.** Three modes: everything, including a confirmed backfill of older history; newly watched only, from the moment you turn it on; or manual, where nothing posts until you say so. Completion thresholds, ingest schedule, and a reconciliation pass against Trakt are all settings. Ingest pulls from tofa. Reconciliation downloads Trakt history. Neither of those steps posts a play or changes sync status — matching happens when you run a sync.
 
 **Monthly review.** Plays, hours, movies versus episodes, and how the month compares with the last one. First play of the month, genre splits, a calendar of active days, and the titles you returned to. Numbers use your timezone. A month with no plays stays empty instead of showing a grid of zeros.
 

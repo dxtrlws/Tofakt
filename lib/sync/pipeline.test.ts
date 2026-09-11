@@ -171,6 +171,20 @@ describe("ingest → sync fixtures", () => {
     expect(records().every((row) => row.status === "pending")).toBe(true);
   });
 
+  it("keeps pending plays pending after a reconciliation-style snapshot refresh", async () => {
+    ingest(["play-inception"]);
+    saveSyncSettings({
+      mode: "forward",
+      cutoffIso: "2020-01-01T00:00:00.000Z",
+    });
+    // pullTraktHistory is mocked; calling runSync without force must not mark
+    // or post — status changes wait for an explicit sync.
+    const idle = await runSync();
+    expect(idle.synced).toBe(0);
+    expect(idle.alreadyOnTrakt).toBe(0);
+    expect(records().map((row) => row.status)).toEqual(["pending"]);
+  });
+
   it("posts complete tofa plays once and ignores a second ingest", async () => {
     expect(tmdbInception.id).toBe(27205);
     const first = ingest(["play-inception", "play-silo"]);

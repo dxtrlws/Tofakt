@@ -26,6 +26,7 @@ const BATCH = 100;
 export type RemoveStats = {
   considered: number;
   removed: number;
+  cleared: number;
   skipped: number;
   error?: string;
 };
@@ -75,6 +76,7 @@ export async function removeOnePlay(eventId: string): Promise<RemoveStats> {
     return {
       considered: 0,
       removed: 0,
+      cleared: 0,
       skipped: 1,
       error: "This play is not synced to Trakt.",
     };
@@ -89,6 +91,7 @@ async function removePlays(
   const stats: RemoveStats = {
     considered: plays.length,
     removed: 0,
+    cleared: 0,
     skipped: 0,
   };
   if (plays.length === 0) {
@@ -101,6 +104,7 @@ async function removePlays(
   }
   let access = creds.token;
   const resolved: Array<RemovablePlay & { remoteId: number }> = [];
+  const unresolved: RemovablePlay[] = [];
   for (const play of plays) {
     if (opts.watchlogPostedOnly && !isWatchlogPosted(play)) {
       stats.skipped += 1;
@@ -108,14 +112,18 @@ async function removePlays(
     }
     const remoteId = await resolveRemoteId(play, creds.clientId, access);
     if (remoteId == null) {
-      stats.skipped += 1;
+      unresolved.push(play);
       continue;
     }
     resolved.push({ ...play, remoteId });
   }
+  if (unresolved.length > 0) {
+    // Not on Trakt (or no resolvable history id) — clear the local synced
+    // marker so the play can be queued again under the current sync mode.
+    revertAfterRemove(unresolved);
+    stats.cleared += unresolved.length;
+  }
   if (resolved.length === 0) {
-    stats.error =
-      "Could not find this play on Trakt. Re-run reconciliation, then try again.";
     return stats;
   }
   for (let i = 0; i < resolved.length; i += BATCH) {
@@ -142,22 +150,26 @@ async function removePlays(
       return stats;
     }
     const deletedIds = deletedHistoryIds(res.json, ids);
-    if (deletedIds.length === 0) {
-      stats.error =
-        "Trakt did not find this play. Re-run reconciliation, then try again.";
-      stats.skipped += batch.length;
-      logger.warn(
-        { ids, notFound: res.json?.not_found?.ids },
-        "Trakt history remove returned no deletes",
-      );
-      return stats;
-    }
     const deletedSet = new Set(deletedIds);
     const succeeded = batch.filter((play) => deletedSet.has(play.remoteId));
-    revertAfterRemove(succeeded);
-    deleteSnapshotsByHistoryIds(deletedIds);
-    stats.removed += succeeded.length;
-    stats.skipped += batch.length - succeeded.length;
+    const missing = batch.filter((play) => !deletedSet.has(play.remoteId));
+    if (succeeded.length > 0) {
+      revertAfterRemove(succeeded);
+      deleteSnapshotsByHistoryIds(deletedIds);
+      stats.removed += succeeded.length;
+    }
+    if (missing.length > 0) {
+      // Trakt did not have these history ids — demote local synced state.
+      revertAfterRemove(missing);
+      stats.cleared += missing.length;
+      logger.warn(
+        {
+          ids: missing.map((play) => play.remoteId),
+          notFound: res.json?.not_found?.ids,
+        },
+        "Trakt history remove found no matching plays; cleared local sync status",
+      );
+    }
   }
   logger.info(stats, "Removed Watchlog plays from Trakt");
   return stats;

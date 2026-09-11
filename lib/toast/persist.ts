@@ -37,7 +37,9 @@ export function takeToastSeed(): ToastSeedPayload | null {
 
 export const takeToastCookie = cache(takeToastSeed);
 
-export function reply<T extends ActionFlash>(flash: T): T {
+/** Persist first, then optional revalidation so the next RSC read can seed the toast. */
+export function reply<T extends ActionFlash>(flash: T, after?: () => void): T {
   persistToast(flash);
+  after?.();
   return flash;
 }

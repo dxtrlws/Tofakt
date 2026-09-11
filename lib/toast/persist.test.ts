@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { persistToast, takeToastSeed } from "./persist";
+import { persistToast, reply, takeToastSeed } from "./persist";
 
 const store = vi.hoisted(() => new Map<string, unknown>());
 
@@ -37,5 +37,16 @@ describe("takeToastSeed", () => {
     store.set("ui.toast", { ...stored, nonce: Date.now() - 11_000 });
     expect(takeToastSeed()).toBeNull();
     expect(store.has("ui.toast")).toBe(false);
+  });
+
+  it("persists before running an after callback", () => {
+    const order: string[] = [];
+    reply({ info: "Synced 1 (0 already on Trakt, 0 unmatched)." }, () => {
+      order.push("after");
+      expect(store.has("ui.toast")).toBe(true);
+    });
+    order.push("returned");
+    expect(order).toEqual(["after", "returned"]);
+    expect(takeToastSeed()?.message).toMatch(/^Synced /);
   });
 });

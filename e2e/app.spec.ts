@@ -82,14 +82,17 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
     await page.goto("/settings/sync");
     await page.getByRole("button", { name: "Run sync now" }).click();
     await expect(page.getByRole("button", { name: /Working/ })).toBeVisible();
-    await page.getByRole("banner").getByRole("link", { name: "Home" }).click();
     const notices = page.getByRole("region", { name: "Notifications" }).first();
     await expect(notices.getByText(/Syncing plays|Synced /)).toBeVisible({
       timeout: 30_000,
     });
+    // Stay on Settings until the job finishes so the busy→ok toast is not
+    // stranded on an unmounted form (Home still works once sync has completed).
     await expect(notices.getByText(/Synced /)).toBeVisible({
       timeout: 30_000,
     });
+    await page.getByRole("banner").getByRole("link", { name: "Home" }).click();
+    await expect(page).toHaveURL("/");
 
     await page.goto("/monthly");
     await expect(

@@ -56,8 +56,7 @@ export async function saveDataPrefsAction(
     weekStarts: weekStarts === "monday" ? "monday" : "sunday",
     countPartials,
   });
-  refresh();
-  return reply({ info: "Data preferences saved." });
+  return reply({ info: "Data preferences saved." }, refresh);
 }
 
 export async function previewImportAction(
@@ -83,10 +82,12 @@ export async function previewImportAction(
   }
   try {
     const count = stashImportPreview(parseHistoryFile(parsed));
-    refresh();
-    return reply({
-      info: `${count} ${count === 1 ? "play" : "plays"} ready to import. Confirm below to write them. Existing plays are skipped.`,
-    });
+    return reply(
+      {
+        info: `${count} ${count === 1 ? "play" : "plays"} ready to import. Confirm below to write them. Existing plays are skipped.`,
+      },
+      refresh,
+    );
   } catch (err) {
     return reply({
       error: err instanceof Error ? err.message : "Could not read that file.",
@@ -104,10 +105,12 @@ export async function confirmImportAction(
   }
   try {
     const result = confirmImport();
-    refresh();
-    return reply({
-      info: `Imported ${result.inserted} ${result.inserted === 1 ? "play" : "plays"}. Skipped ${result.skipped} already stored.`,
-    });
+    return reply(
+      {
+        info: `Imported ${result.inserted} ${result.inserted === 1 ? "play" : "plays"}. Skipped ${result.skipped} already stored.`,
+      },
+      refresh,
+    );
   } catch (err) {
     return reply({
       error: err instanceof Error ? err.message : "Import failed.",
@@ -124,8 +127,7 @@ export async function cancelImportAction(
     return reply(blocked);
   }
   cancelImportPreview();
-  refresh();
-  return reply({ info: "Import cancelled." });
+  return reply({ info: "Import cancelled." }, refresh);
 }
 
 export async function clearSyncAction(
@@ -140,10 +142,12 @@ export async function clearSyncAction(
     return { error: "Type Clear sync records to confirm." };
   }
   const count = clearSyncRecords();
-  refresh();
-  return reply({
-    info: `Cleared ${count} sync records. Local history is intact. Trakt was not changed.`,
-  });
+  return reply(
+    {
+      info: `Cleared ${count} sync records. Local history is intact. Trakt was not changed.`,
+    },
+    refresh,
+  );
 }
 
 export async function wipeLocalAction(
@@ -158,10 +162,12 @@ export async function wipeLocalAction(
     return { error: "Type Clear all local data to confirm." };
   }
   wipeLocalHistory();
-  refresh();
-  return reply({
-    info: "Local watch history is gone. Connections and login stay. Trakt was not changed.",
-  });
+  return reply(
+    {
+      info: "Local watch history is gone. Connections and login stay. Trakt was not changed.",
+    },
+    refresh,
+  );
 }
 
 export async function forgetConnectionAction(
@@ -180,8 +186,10 @@ export async function forgetConnectionAction(
     return { error: "Pick a connection to forget." };
   }
   forgetProvider(provider as Provider);
-  refresh();
-  return reply({
-    info: `Forgot ${provider}. Stored tokens are gone. Trakt history stays.`,
-  });
+  return reply(
+    {
+      info: `Forgot ${provider}. Stored tokens are gone. Trakt history stays.`,
+    },
+    refresh,
+  );
 }

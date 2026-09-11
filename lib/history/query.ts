@@ -1,8 +1,8 @@
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { getDataPrefs } from "../data/prefs";
 import { getDb } from "../db";
 import { mediaItems, syncRecords, watchEvents } from "../db/schema";
 import { timezone } from "../ingest/run";
-import { getDataPrefs } from "../data/prefs";
 
 export type HistoryKindFilter = "all" | "movies" | "tv";
 export type HistoryStateFilter =

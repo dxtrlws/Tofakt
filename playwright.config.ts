@@ -45,6 +45,7 @@ export default defineConfig({
         LOG_LEVEL: "error",
         APP_ENCRYPTION_KEY: "watchlog-e2e-encryption-key",
         WATCHLOG_DISABLE_SCHEDULER: "1",
+        BASE_URL: "http://127.0.0.1:8081",
       },
     },
   ],

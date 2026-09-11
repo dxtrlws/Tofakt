@@ -22,6 +22,7 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
       .filter({ has: page.getByRole("heading", { name: "tofa" }) });
     await tofa.getByLabel("tofa server URL").fill("http://127.0.0.1:8099");
     await tofa.getByRole("button", { name: "Save URL" }).click();
+    await expect(tofa.getByLabel("tofa API key")).toBeVisible();
     await expect(tofa.getByLabel("tofa server URL")).toHaveValue(
       "http://127.0.0.1:8099",
     );
@@ -54,12 +55,10 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
   await test.step("change sync mode then restore manual", async () => {
     await page.goto("/settings/sync");
     await page.getByRole("radio", { name: /^Newly watched only/ }).check();
-    await page.getByRole("button", { name: "Save mode" }).click();
     await expect(
       page.getByText(/Only plays that finish after now will queue/),
     ).toBeVisible();
     await page.getByRole("radio", { name: /^Manual/ }).check();
-    await page.getByRole("button", { name: "Save mode" }).click();
     await expect(page.getByText(/Manual mode/)).toBeVisible();
   });
 

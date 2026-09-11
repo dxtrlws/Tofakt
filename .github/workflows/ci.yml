@@ -17,5 +17,11 @@ jobs:
       - run: npm ci
       - run: npx biome check
       - run: npm test
+      - run: npm run build
+      - run: |
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          cp -r drizzle .next/standalone/drizzle
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

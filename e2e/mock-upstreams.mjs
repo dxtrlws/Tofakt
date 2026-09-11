@@ -204,6 +204,15 @@ const server = http.createServer(async (req, res) => {
     });
     return;
   }
+  if (path === "/sync/history/remove" && method === "POST") {
+    const body = await readBody(req);
+    const ids = Array.isArray(body.ids) ? body.ids : [];
+    send(res, 200, {
+      deleted: { movies: ids.length, episodes: 0 },
+      not_found: { ids: [] },
+    });
+    return;
+  }
   if (path.startsWith("/calendars/my/shows")) {
     send(res, 200, []);
     return;

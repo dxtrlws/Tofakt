@@ -230,22 +230,38 @@ export async function syncWatchEvent(formData: FormData): Promise<void> {
   refresh();
 }
 
-export async function removeWatchEvent(formData: FormData): Promise<void> {
+export async function removeWatchEvent(
+  _prev: SyncActionState | undefined,
+  form: FormData,
+): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
-    return;
+    return blocked;
   }
-  const eventId = String(formData.get("eventId") ?? "");
+  const eventId = String(form.get("eventId") ?? "");
   if (!eventId) {
-    return;
+    return { error: "Missing play." };
   }
-  await removeOnePlay(eventId);
-  writeAudit({
-    action: "sync.remove_play",
-    subjectType: "watch_event",
-    subjectId: eventId,
-  });
+  const stats = await removeOnePlay(eventId);
+  if (stats.removed > 0) {
+    writeAudit({
+      action: "sync.remove_play",
+      subjectType: "watch_event",
+      subjectId: eventId,
+      detail: stats,
+    });
+  }
   refresh();
+  if (stats.error) {
+    return { error: stats.error };
+  }
+  if (stats.removed === 0) {
+    return {
+      error:
+        "Could not remove this play from Trakt. Re-run reconciliation, then try again.",
+    };
+  }
+  return { info: "Removed this play from Trakt." };
 }
 
 export async function undoWatchlogPosts(

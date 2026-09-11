@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertSameOrigin } from "../auth/csrf";
 import { requireUser } from "../auth/require";
@@ -51,6 +52,11 @@ async function guard(): Promise<{ error: string } | null> {
   return assertSameOrigin();
 }
 
+function refreshConnectionPages(): void {
+  revalidatePath("/settings/connections");
+  revalidatePath("/");
+}
+
 export async function getPublicConnections(): Promise<{
   tofa: PublicConnection;
   trakt: PublicConnection;
@@ -83,6 +89,7 @@ export async function saveTofaUrl(
     lastError: null,
   });
   await verifyTofa();
+  refreshConnectionPages();
   const row = getConnection("tofa");
   if (row?.status === "down") {
     return { error: row.lastError ?? "Could not reach that URL." };
@@ -114,6 +121,7 @@ export async function saveTofaApiKey(
     lastError: null,
   });
   await verifyTofa();
+  refreshConnectionPages();
   return { info: "API key saved. Test connection to confirm." };
 }
 
@@ -144,6 +152,7 @@ export async function startTofaDeviceFlow(): Promise<ConnectionActionState> {
       baseUrl: fresh.baseUrl ?? undefined,
     });
     upsertConnection("tofa", { authMethod: "device" });
+    refreshConnectionPages();
     return {
       info: "Approve Watchlog in tofa, then wait here.",
       flow: {
@@ -196,6 +205,7 @@ export async function pollDeviceFlow(
       persistDeviceTokens("tofa", result.tokens);
       deletePendingFlow(flow.id);
       await verifyTofa();
+      refreshConnectionPages();
       return { info: "tofa connected." };
     }
 
@@ -226,6 +236,7 @@ export async function pollDeviceFlow(
     persistDeviceTokens("trakt", result.tokens);
     deletePendingFlow(flow.id);
     await verifyTrakt();
+    refreshConnectionPages();
     return { info: "Trakt connected." };
   } catch (err) {
     return { error: messageOf(err) };
@@ -239,6 +250,7 @@ export async function testTofaConnection(): Promise<ConnectionActionState> {
   }
   await refreshDueTokens();
   await verifyTofa();
+  refreshConnectionPages();
   const row = getConnection("tofa");
   if (!row?.baseUrl) {
     return { error: "Save a tofa URL first." };
@@ -272,6 +284,7 @@ export async function saveTraktApp(
     lastError: null,
   });
   await verifyTrakt();
+  refreshConnectionPages();
   return {
     info: "App credentials saved. Next: connect your Trakt account.",
   };
@@ -313,6 +326,7 @@ export async function startTraktDeviceFlow(): Promise<ConnectionActionState> {
       verificationUrl: code.verification_url,
     });
     upsertConnection("trakt", { authMethod: "device" });
+    refreshConnectionPages();
     let qr: string | null = null;
     try {
       qr = await qrDataUrl(code.verification_url);
@@ -341,6 +355,7 @@ export async function testTraktConnection(): Promise<ConnectionActionState> {
   }
   await refreshDueTokens();
   await verifyTrakt();
+  refreshConnectionPages();
   const row = getConnection("trakt");
   if (!row?.extraEnc) {
     return { error: "Save your Trakt client id and secret first." };
@@ -379,6 +394,7 @@ export async function saveTmdb(
     lastError: null,
   });
   await verifyTmdb();
+  refreshConnectionPages();
   return { info: "API key saved. Test connection to confirm." };
 }
 
@@ -388,6 +404,7 @@ export async function testTmdbConnection(): Promise<ConnectionActionState> {
     return blocked;
   }
   await verifyTmdb();
+  refreshConnectionPages();
   const row = getConnection("tmdb");
   if (!row?.accessTokenEnc) {
     return { error: "Save a TMDB API key first." };

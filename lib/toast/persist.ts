@@ -18,7 +18,7 @@ export function persistToast(flash: ActionFlash & { flow?: unknown }): void {
   setSettingJson(KEY, { ...mapped, nonce: Date.now() });
 }
 
-export const takeToastCookie = cache((): ToastSeedPayload | null => {
+export function takeToastSeed(): ToastSeedPayload | null {
   const parsed = getSettingJson<ToastSeedPayload>(KEY);
   if (
     !parsed?.message ||
@@ -28,12 +28,14 @@ export const takeToastCookie = cache((): ToastSeedPayload | null => {
   ) {
     return null;
   }
+  deleteSetting(KEY);
   if (parsed.nonce && Date.now() - parsed.nonce > 10_000) {
-    deleteSetting(KEY);
     return null;
   }
   return parsed;
-});
+}
+
+export const takeToastCookie = cache(takeToastSeed);
 
 export function reply<T extends ActionFlash>(flash: T): T {
   persistToast(flash);

@@ -22,8 +22,8 @@ export type Toast = {
 };
 
 export const toastDuration: Record<Exclude<ToastLevel, "busy">, number> = {
-  ok: 4000,
-  warn: 6000,
+  ok: 6000,
+  warn: 7000,
   error: 8000,
 };
 

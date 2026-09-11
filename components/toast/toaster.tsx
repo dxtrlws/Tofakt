@@ -76,7 +76,7 @@ export function Toaster({
         },
       ]
     : [];
-  const toasts = uniqueToasts([...seeded, ...live]);
+  const toasts = uniqueToasts(hydrated ? live : [...seeded, ...live]);
   if (toasts.length === 0) {
     return null;
   }

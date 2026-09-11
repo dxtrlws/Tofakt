@@ -45,6 +45,13 @@ export default async function AboutPage() {
           >
             Logs
           </Link>
+          . Design tokens and UI primitives live on the{" "}
+          <Link
+            className="text-accent underline underline-offset-2"
+            href="/styleguide"
+          >
+            Styleguide
+          </Link>
           .
         </p>
         <p className="text-meta leading-meta text-fg-muted">

@@ -18,12 +18,13 @@ Package version: **0.2.0**. Image: `ghcr.io/dxtrlws/watchlog`.
 - Settings → **Logs** tab; server-action mutation model; limited HTTP routes.
 - Scheduler vs on-demand sync distinction; Trakt-primary monthly/year reviews.
 - Explicit “not implemented” callouts for gaps that still appear in product copy.
+- Live **`/styleguide`** route (token + primitive samples; linked from Settings → About).
 
 **Modified**
 
-- §0 repo map (source tree exists); §3 design marked complete; §4 architecture diagram and stack.
+- §0 repo map (source tree exists); §3 design marked complete with styleguide; §4 architecture diagram and stack.
 - §5.1 tofa rewritten from live discovery; §6 eligibility/timestamps/sync modes aligned with code.
-- §7 Home / History / Monthly / Settings rewritten to match routes and data sources.
+- §7 Home / History / Monthly / Settings rewritten to match routes and data sources; `/styleguide` listed.
 - §8 schema aligned to [`lib/db/schema.ts`](lib/db/schema.ts); §9 security as implemented; §10 env vars.
 - §11 converted from build-order phases to a status matrix; §12–§14 updated against CI and [`docs/DEFINITION-OF-DONE.md`](docs/DEFINITION-OF-DONE.md).
 
@@ -34,6 +35,7 @@ Package version: **0.2.0**. Image: `ghcr.io/dxtrlws/watchlog`.
 - Required automatic Trakt sync job and separate enrich / token-refresh scheduler jobs.
 - Unresolved discovery TODOs that [`docs/DISCOVERY.md`](docs/DISCOVERY.md) already answered.
 - Placeholder product rename note as an open Phase 2 task (name remains Watchlog in code and packaging).
+- Open “whether `/styleguide` is desired” verification — route is shipped.
 
 ---
 
@@ -48,7 +50,7 @@ Package version: **0.2.0**. Image: `ghcr.io/dxtrlws/watchlog`.
 ├── lib/                   ← domain logic (auth, connections, ingest, sync, stats, …)
 ├── drizzle/               ← SQL migrations + meta
 ├── design/
-│   └── TOKENS.md          ← extracted design tokens (reference PNGs are not in git)
+│   └── TOKENS.md          ← extracted design tokens (live samples at /styleguide)
 ├── docs/
 │   ├── tofa-api.md        ← tofa public API reference
 │   ├── DISCOVERY.md       ← resolved tofa response shapes (Phase 1 complete)
@@ -62,7 +64,7 @@ Package version: **0.2.0**. Image: `ghcr.io/dxtrlws/watchlog`.
 **Agent rules:**
 
 1. **Do not invent API response shapes.** Prefer [`docs/DISCOVERY.md`](docs/DISCOVERY.md) and Zod schemas under `lib/tofa`, `lib/trakt`, and `lib/tmdb`. Where this brief still hedges, treat it as a hypothesis against the live server.
-2. **Do not invent visual design.** Tokens live in [`design/TOKENS.md`](design/TOKENS.md) and are implemented as CSS custom properties in [`app/globals.css`](app/globals.css). Reference Paper Design PNGs are not checked into git.
+2. **Do not invent visual design.** Tokens live in [`design/TOKENS.md`](design/TOKENS.md) and are implemented as CSS custom properties in [`app/globals.css`](app/globals.css). Browse live samples at `/styleguide`. Reference Paper Design PNGs are not checked into git.
 3. **Cite this file**, not `README.md`, when reasoning about product requirements.
 
 ---
@@ -114,14 +116,14 @@ Use these exact terms in code, UI copy, and the database. Consistency here preve
 
 ## 3. Design language
 
-Phase 0 is **complete**. Tokens are documented in [`design/TOKENS.md`](design/TOKENS.md) and consumed via Tailwind v4 `@theme` in [`app/globals.css`](app/globals.css).
+Phase 0 is **complete**. Tokens are documented in [`design/TOKENS.md`](design/TOKENS.md) and consumed via Tailwind v4 `@theme` in [`app/globals.css`](app/globals.css). Live samples: [`/styleguide`](app/styleguide/page.tsx) (session required; linked from Settings → About).
 
 - **Mood:** nocturnal teal (deep water / mint phosphor), not purple Trakt branding.
 - **Elevation:** border + tinted fill; not drop shadows.
 - **Typography:** Inter (body) + Outfit (display/headline), loaded in [`app/layout.tsx`](app/layout.tsx).
 - **Components:** custom layer only — no Radix / Base UI / chart library dependency.
 - **Charts:** CSS / SVG bars themed with design tokens.
-- **Styleguide page:** not present in the repo. ⚠️ `[NEEDS VERIFICATION]` whether a `/styleguide` route is still desired.
+- **Styleguide page:** `/styleguide` — principles, color, type, radius, spacing, buttons, fields, sync badges, surfaces, empty state, motion, focus.
 
 Every component should consume tokens. No hard-coded hex values in the component tree.
 
@@ -440,6 +442,7 @@ Mobile-first responsive, with real desktop layouts. WCAG 2.2 AA goals: keyboard 
 | `/settings/data` | Prefs, import/export, danger zone |
 | `/settings/logs` | Jobs + audit log |
 | `/settings/about` | Version, diagnostics, attribution |
+| `/styleguide` | Live design tokens + UI primitives (not in primary nav) |
 
 Nav shell: Home, History, Monthly, Year, Settings. PWA manifest present.
 
@@ -511,7 +514,7 @@ Completed years + live current-year preview. Totals, sparklines, top lists, bing
 
 **Logs** — job runs, audit log / diagnostics.
 
-**About** — version / `WATCHLOG_BUILD`, uptime, DB size, counts, rate-limit / circuit state, TMDB + Trakt attribution.
+**About** — version / `WATCHLOG_BUILD`, uptime, DB size, counts, rate-limit / circuit state, TMDB + Trakt attribution; link to `/styleguide`.
 
 ---
 
@@ -619,7 +622,7 @@ Former “build phases,” updated to shipped reality.
 
 | Area | Status | Notes |
 |---|---|---|
-| Design tokens + CSS theme | **Shipped** | No styleguide route |
+| Design tokens + CSS theme | **Shipped** | `/styleguide` + `design/TOKENS.md` |
 | tofa discovery | **Shipped** | `docs/DISCOVERY.md` |
 | Foundation (Next, SQLite, auth, Docker) | **Shipped** | |
 | Connections (tofa / Trakt / TMDB) | **Shipped** | |
@@ -681,4 +684,4 @@ Still open on the live checklist (do not invent completion):
 | `media/changes` vs history polling | **Resolved** — keep polling history |
 | Trakt free-account history limits | ⚠️ `[NEEDS VERIFICATION]` — re-check when operating large backfills |
 | Whether Fix match / bulk actions remain product requirements | ⚠️ `[NEEDS VERIFICATION]` — not implemented; attention copy still mentions Fix match |
-| Styleguide route | ⚠️ `[NEEDS VERIFICATION]` |
+| Styleguide route | **Resolved** — `/styleguide` (auth required; linked from About) |

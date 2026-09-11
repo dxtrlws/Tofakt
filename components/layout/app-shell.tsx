@@ -15,7 +15,7 @@ export function AppShell({
   children,
 }: {
   username: string;
-  current: "home" | "settings" | "history" | "monthly" | "year";
+  current?: "home" | "settings" | "history" | "monthly" | "year";
   children: ReactNode;
 }) {
   return (

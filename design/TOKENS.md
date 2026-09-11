@@ -266,9 +266,9 @@ Skip Trakt-specific bits from the reference shots: comments, lists, “VIP”, �
 
 ---
 
-## Tailwind v4 `@theme` sketch
+## Tailwind v4 `@theme`
 
-Implemented in Phase 0 code (styleguide page), not in this repo yet. Names must match this file.
+Implemented in [`app/globals.css`](../app/globals.css). Live samples: [`/styleguide`](../app/styleguide/page.tsx). Names must match this file.
 
 ```css
 @theme {
@@ -304,7 +304,7 @@ Implemented in Phase 0 code (styleguide page), not in this repo yet. Names must 
 
 Open file: [Tofu & Trakt](https://app.paper.design/file/01M1Y5NSEM81RM6T392BQ3EA1R/1-0). Currently empty. Screens to lock before Phase 2:
 
-1. Tokens / primitives styleguide
+1. Tokens / primitives styleguide — **shipped in-app** at `/styleguide`
 2. Home
 3. History
 4. Monthly review (desktop + mobile)
@@ -313,4 +313,4 @@ Open file: [Tofu & Trakt](https://app.paper.design/file/01M1Y5NSEM81RM6T392BQ3EA
 7. Login / first-run
 8. Empty, error, needs-attention, backfill-preview
 
-App chrome is **not** tofa’s Home / Browse / Discover. Watchlog nav: Home, History, Monthly, Year, Settings.
+App chrome is **not** tofa’s Home / Browse / Discover. Watchlog nav: Home, History, Monthly, Year, Settings. The styleguide is out of the primary nav (linked from Settings → About).

@@ -1,5 +1,4 @@
 import { and, desc, gte, inArray, lt, or } from "drizzle-orm";
-import { refreshTraktConnection } from "../connections/service";
 import { getConnection, readAccessToken } from "../connections/store";
 import { getDb } from "../db";
 import { mediaItems, providerSnapshots, ratings } from "../db/schema";
@@ -10,8 +9,13 @@ import {
   traktCreds,
 } from "../home/trakt";
 import { timezone } from "../ingest/run";
+import {
+  countHistoryItemsInRange,
+  listHistoryItemsInRange,
+} from "../sync/reconcile";
 import { tmdbBackdropUrl, tmdbImageUrl } from "../tmdb/poster";
-import { type TraktHistoryItem, traktHistoryInRange } from "../trakt/history";
+import { ensureHistorySnapshot } from "../trakt/cache";
+import type { TraktHistoryItem } from "../trakt/history";
 import {
   formatDelta,
   formatHours,
@@ -337,34 +341,18 @@ async function loadTraktPlays(
   prevCount: number;
 }> {
   try {
-    let creds = await traktCreds();
+    const creds = await traktCreds();
     if (!creds) {
       return { connected: false, items: [], prevCount: 0 };
     }
-    const pull = async (clientId: string, token: string) => {
-      const [current, previous] = await Promise.all([
-        traktHistoryInRange(clientId, token, start, end),
-        traktHistoryInRange(clientId, token, prevStart, prevEnd),
-      ]);
-      return { current, previous };
-    };
-    let { current, previous } = await pull(creds.clientId, creds.token);
-    if (current.status === 401 || previous.status === 401) {
-      await refreshTraktConnection();
-      creds = await traktCreds();
-      if (!creds) {
-        return { connected: false, items: [], prevCount: 0 };
-      }
-      ({ current, previous } = await pull(creds.clientId, creds.token));
-    }
-    if (current.status !== 200) {
-      logHomeTraktError(new Error(`trakt month history ${current.status}`));
-      return { connected: true, items: [], prevCount: 0 };
+    const ensured = await ensureHistorySnapshot();
+    if (ensured.error) {
+      logHomeTraktError(new Error(ensured.error));
     }
     return {
       connected: true,
-      items: current.items,
-      prevCount: previous.status === 200 ? previous.items.length : 0,
+      items: listHistoryItemsInRange(start, end),
+      prevCount: countHistoryItemsInRange(prevStart, prevEnd),
     };
   } catch (err) {
     logHomeTraktError(err);

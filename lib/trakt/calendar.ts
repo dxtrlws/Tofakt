@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { fetchJson } from "../net/fetch-json";
 import { traktApiBase } from "../net/upstream";
-import { traktLimiter } from "./rate-limit";
+import { traktFetchGet } from "./fetch";
 
 const idsSchema = z
   .object({
@@ -57,10 +56,9 @@ export async function traktGetShowCalendar(
   startDate: string,
   days = 21,
 ): Promise<{ items: TraktCalendarItem[]; status: number }> {
-  await traktLimiter.waitGet();
-  const res = await fetchJson(
+  const res = await traktFetchGet(
     `${traktApiBase()}/calendars/my/shows/${startDate}/${days}?extended=full`,
-    { cache: "no-store", headers: headers(clientId, accessToken) },
+    headers(clientId, accessToken),
     20_000,
   );
   return {

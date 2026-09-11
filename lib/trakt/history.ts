@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { fetchJson } from "../net/fetch-json";
 import { traktApiBase } from "../net/upstream";
+import { retryAfterMs, traktFetchGet } from "./fetch";
 import { traktLimiter } from "./rate-limit";
+
+export { retryAfterMs };
 
 const idsSchema = z
   .object({
@@ -127,21 +130,27 @@ function headers(clientId: string, accessToken: string): HeadersInit {
   };
 }
 
+export type HistoryType = "movies" | "episodes";
+
 export async function traktGetHistoryPage(
   clientId: string,
   accessToken: string,
-  type: "movies" | "episodes",
+  type: HistoryType | null,
   page: number,
   limit = 100,
   range?: { startAt?: Date; endAt?: Date; extended?: boolean },
 ): Promise<{
   items: TraktHistoryItem[];
   pageCount: number;
+  itemCount: number;
   status: number;
   headers: Record<string, string>;
 }> {
-  await traktLimiter.waitGet();
-  const url = new URL(`${traktApiBase()}/sync/history/${type}`);
+  const url = new URL(
+    type
+      ? `${traktApiBase()}/sync/history/${type}`
+      : `${traktApiBase()}/sync/history`,
+  );
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
   if (range?.extended) {
@@ -153,15 +162,19 @@ export async function traktGetHistoryPage(
   if (range?.endAt) {
     url.searchParams.set("end_at", range.endAt.toISOString());
   }
-  const res = await fetchJson(
+  const res = await traktFetchGet(
     url.toString(),
-    { cache: "no-store", headers: headers(clientId, accessToken) },
+    headers(clientId, accessToken),
     20_000,
   );
+  const items = res.status === 200 ? parseTraktHistoryItems(res.json) : [];
   return {
-    items: res.status === 200 ? parseTraktHistoryItems(res.json) : [],
+    items,
     pageCount:
       Number.parseInt(res.headers["x-pagination-page-count"] ?? "1", 10) || 1,
+    itemCount:
+      Number.parseInt(res.headers["x-pagination-item-count"] ?? "0", 10) ||
+      items.length,
     status: res.status,
     headers: res.headers,
   };
@@ -176,30 +189,28 @@ export async function traktHistoryInRange(
 ): Promise<{ items: TraktHistoryItem[]; status: number }> {
   const items: TraktHistoryItem[] = [];
   let status = 200;
-  for (const type of ["movies", "episodes"] as const) {
-    let page = 1;
-    let pages = 1;
-    while (page <= pages && page <= maxPages) {
-      const res = await traktGetHistoryPage(
-        clientId,
-        accessToken,
-        type,
-        page,
-        100,
-        {
-          startAt: start,
-          endAt: end,
-          extended: true,
-        },
-      );
-      status = res.status;
-      if (res.status !== 200) {
-        return { items, status };
-      }
-      items.push(...res.items);
-      pages = res.pageCount;
-      page += 1;
+  let page = 1;
+  let pages = 1;
+  while (page <= pages && page <= maxPages) {
+    const res = await traktGetHistoryPage(
+      clientId,
+      accessToken,
+      null,
+      page,
+      100,
+      {
+        startAt: start,
+        endAt: end,
+        extended: true,
+      },
+    );
+    status = res.status;
+    if (res.status !== 200) {
+      return { items, status };
     }
+    items.push(...res.items);
+    pages = res.pageCount;
+    page += 1;
   }
   return { items, status };
 }
@@ -209,13 +220,12 @@ export async function traktGetRecentHistory(
   accessToken: string,
   limit = 12,
 ): Promise<{ items: TraktHistoryItem[]; status: number }> {
-  await traktLimiter.waitGet();
   const url = new URL(`${traktApiBase()}/users/me/history`);
   url.searchParams.set("limit", String(limit));
   url.searchParams.set("extended", "full");
-  const res = await fetchJson(
+  const res = await traktFetchGet(
     url.toString(),
-    { cache: "no-store", headers: headers(clientId, accessToken) },
+    headers(clientId, accessToken),
     20_000,
   );
   return {
@@ -280,20 +290,4 @@ export async function traktRemoveHistory(
     headers: res.headers,
     text: res.text,
   };
-}
-
-export function retryAfterMs(headers: Record<string, string>): number | null {
-  const raw = headers["retry-after"];
-  if (!raw) {
-    return null;
-  }
-  const seconds = Number.parseInt(raw, 10);
-  if (Number.isFinite(seconds)) {
-    return seconds * 1000;
-  }
-  const date = Date.parse(raw);
-  if (Number.isFinite(date)) {
-    return Math.max(0, date - Date.now());
-  }
-  return null;
 }

@@ -15,6 +15,13 @@
       "when": 1788819160895,
       "tag": "0001_sad_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789108033021,
+      "tag": "0002_sad_proemial_gods",
+      "breakpoints": true
     }
   ]
 }

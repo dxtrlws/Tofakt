@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { syncRecords } from "../db/schema";
 import { type MatchablePlay, matchSnapshot, type SnapshotPlay } from "./match";
-import { fetchHistoryWindow } from "./reconcile";
+import { fetchHistoryWindow, upsertSnapshotRows } from "./reconcile";
 import { getSyncSettings } from "./settings";
 
 export const WATCHLOG_POSTED = "watchlog_posted";
@@ -47,6 +47,7 @@ export async function capturePostedRemoteIds(
     startAt: new Date(Math.min(...times) - padMs),
     endAt: new Date(Math.max(...times) + padMs),
   });
+  upsertSnapshotRows(snapshots);
   const mapped = snapshots.map((row) => ({
     traktHistoryId: row.traktHistoryId,
     kind: row.kind,

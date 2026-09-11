@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as schema from "../db/schema";
 import { syncRecords, watchEvents } from "../db/schema";
+import { applySqlMigrations } from "../db/sql-migrations";
 import { commitPage } from "../ingest/run";
 import type { MediaDetail, PlaySession } from "../tofa/history";
 import { runSync } from "./run";
@@ -31,6 +32,7 @@ const ctx = vi.hoisted(() => ({
   db: null as ReturnType<typeof drizzle<typeof schema>> | null,
   token: "access-token",
   posts: [] as Array<{ token: string; body: unknown }>,
+  pulls: 0,
   nextPost: null as
     | null
     | ((token: string) => {
@@ -97,8 +99,17 @@ vi.mock("./posted", async (importOriginal) => {
 });
 
 vi.mock("./reconcile", () => ({
-  pullTraktHistory: async () => ({ count: 0, matched: 0 }),
+  pullTraktHistory: async () => {
+    ctx.pulls += 1;
+    return { count: 0, matched: 0 };
+  },
   listSnapshots: () => [],
+  snapshotCount: () => 0,
+  snapshotFetchedAt: () => null,
+  snapshotMissingPayload: () => false,
+  fetchHistoryWindow: async () => [],
+  upsertSnapshotRows: () => undefined,
+  toSnapshotPlay: (row: unknown) => row,
 }));
 
 vi.mock("../logger", () => ({
@@ -107,16 +118,7 @@ vi.mock("../logger", () => ({
 
 ctx.sqlite = new Database(":memory:");
 ctx.sqlite.pragma("foreign_keys = ON");
-const folder = join(process.cwd(), "drizzle");
-for (const file of ["0000_fat_dust.sql", "0001_sad_jackpot.sql"]) {
-  const sql = readFileSync(join(folder, file), "utf8");
-  for (const part of sql.split("--> statement-breakpoint")) {
-    const trimmed = part.trim();
-    if (trimmed) {
-      ctx.sqlite.exec(trimmed);
-    }
-  }
-}
+applySqlMigrations(ctx.sqlite);
 ctx.db = drizzle(ctx.sqlite, { schema });
 
 function detailsFor(plays: PlaySession[]): Map<string, MediaDetail> {
@@ -144,6 +146,7 @@ describe("ingest → sync fixtures", () => {
   beforeEach(() => {
     ctx.token = "access-token";
     ctx.posts = [];
+    ctx.pulls = 0;
     ctx.nextPost = null;
     ctx.sqlite?.exec("delete from job_runs");
     ctx.sqlite?.exec("delete from jobs");
@@ -274,5 +277,25 @@ describe("ingest → sync fixtures", () => {
     expect(stats.posted).toBe(0);
     expect(records()[0]?.status).toBe("unmatched");
     expect(ctx.posts).toHaveLength(0);
+  });
+
+  it("does not pull full Trakt history when syncing one play", async () => {
+    ingest(["play-inception"]);
+    ctx.nextPost = () => ({
+      status: 200,
+      json: postAdded,
+      headers: {},
+      text: "",
+    });
+    const eventId = ctx.db?.select().from(watchEvents).all()[0]?.id;
+    expect(eventId).toBeTruthy();
+    const stats = await runSync({
+      eventIds: [eventId ?? ""],
+      ignoreCutoff: true,
+      force: true,
+    });
+    expect(ctx.pulls).toBe(0);
+    expect(stats.posted).toBe(1);
+    expect(ctx.posts).toHaveLength(1);
   });
 });

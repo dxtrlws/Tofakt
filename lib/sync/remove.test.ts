@@ -1,11 +1,10 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import Database from "better-sqlite3";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as schema from "../db/schema";
 import { syncRecords } from "../db/schema";
+import { applySqlMigrations } from "../db/sql-migrations";
 import {
   upsertMediaItem,
   upsertSyncRecord,
@@ -90,16 +89,7 @@ vi.mock("../logger", () => ({
 
 ctx.sqlite = new Database(":memory:");
 ctx.sqlite.pragma("foreign_keys = ON");
-const folder = join(process.cwd(), "drizzle");
-for (const file of ["0000_fat_dust.sql", "0001_sad_jackpot.sql"]) {
-  const sql = readFileSync(join(folder, file), "utf8");
-  for (const part of sql.split("--> statement-breakpoint")) {
-    const trimmed = part.trim();
-    if (trimmed) {
-      ctx.sqlite.exec(trimmed);
-    }
-  }
-}
+applySqlMigrations(ctx.sqlite);
 ctx.db = drizzle(ctx.sqlite, { schema });
 
 function seedPlay(opts: {

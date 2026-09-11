@@ -10,13 +10,40 @@ function defaultSleep(ms: number): Promise<void> {
   });
 }
 
+export type TraktRateLimit = {
+  name?: string;
+  period?: number;
+  limit?: number;
+  remaining?: number;
+  until?: string;
+};
+
+export function parseXRatelimit(
+  headers: Record<string, string>,
+): TraktRateLimit | null {
+  const raw = headers["x-ratelimit"];
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as TraktRateLimit;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export class TraktLimiter {
   private nextWriteAt = 0;
   private getStamps: number[] = [];
+  private blockedUntil = 0;
 
   constructor(
     private readonly writeIntervalMs = WRITE_INTERVAL_MS,
-    private readonly sleep: SleepFn = defaultSleep,
+    readonly sleep: SleepFn = defaultSleep,
     private readonly now: () => number = Date.now,
   ) {}
 
@@ -30,6 +57,7 @@ export class TraktLimiter {
   }
 
   async waitGet(): Promise<void> {
+    await this.waitBlocked();
     const now = this.now();
     this.getStamps = this.getStamps.filter(
       (stamp) => now - stamp < GET_WINDOW_MS,
@@ -38,7 +66,7 @@ export class TraktLimiter {
       this.getStamps.push(now);
       return;
     }
-    const wait = GET_WINDOW_MS - (now - this.getStamps[0]);
+    const wait = Math.max(0, GET_WINDOW_MS - (now - this.getStamps[0]));
     if (wait > 0) {
       await this.sleep(wait);
     }
@@ -46,6 +74,24 @@ export class TraktLimiter {
       (stamp) => this.now() - stamp < GET_WINDOW_MS,
     );
     this.getStamps.push(this.now());
+  }
+
+  noteGetHeaders(headers: Record<string, string>): void {
+    const limit = parseXRatelimit(headers);
+    if (!limit) {
+      return;
+    }
+    if (limit.remaining != null && limit.remaining <= 0 && limit.until) {
+      const until = Date.parse(limit.until);
+      if (Number.isFinite(until)) {
+        this.blockedUntil = Math.max(this.blockedUntil, until);
+      }
+    }
+  }
+
+  retryDelayMs(): number | null {
+    const wait = this.blockedUntil - this.now();
+    return wait > 0 ? wait : null;
   }
 
   snapshot(): { gets: number; budget: number; windowMinutes: number } {
@@ -58,6 +104,13 @@ export class TraktLimiter {
       budget: GET_BUDGET,
       windowMinutes: GET_WINDOW_MS / 60_000,
     };
+  }
+
+  private async waitBlocked(): Promise<void> {
+    const wait = this.blockedUntil - this.now();
+    if (wait > 0) {
+      await this.sleep(wait);
+    }
   }
 }
 

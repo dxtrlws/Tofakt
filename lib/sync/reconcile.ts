@@ -1,6 +1,20 @@
-import { eq, inArray } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { ZodError } from "zod";
-import { refreshDueTokens } from "../connections/service";
+import {
+  refreshDueTokens,
+  refreshTraktConnection,
+} from "../connections/service";
 import {
   getConnection,
   readAccessToken,
@@ -11,7 +25,11 @@ import { jobRuns, jobs, traktHistorySnapshot } from "../db/schema";
 import { newId } from "../ids";
 import { logger } from "../logger";
 import { UpstreamError } from "../net/fetch-json";
-import { type TraktHistoryItem, traktGetHistoryPage } from "../trakt/history";
+import {
+  parseTraktHistoryItems,
+  type TraktHistoryItem,
+  traktGetHistoryPage,
+} from "../trakt/history";
 import { markAlreadyOnTrakt } from "./already";
 import type { SnapshotPlay } from "./match";
 import { getSyncSettings } from "./settings";
@@ -26,15 +44,28 @@ export type SnapshotRow = {
   seasonNumber: number | null;
   episodeNumber: number | null;
   watchedAtUtc: Date | null;
+  payloadJson: string | null;
 };
+
+let inFlight: Promise<{
+  count: number;
+  matched: number;
+  error?: string;
+}> | null = null;
 
 export async function pullTraktHistory(): Promise<{
   count: number;
   matched: number;
   error?: string;
 }> {
+  if (inFlight) {
+    return inFlight;
+  }
+  inFlight = pullTraktHistoryUnlocked().finally(() => {
+    inFlight = null;
+  });
   const started = new Date();
-  const result = await pullTraktHistoryUnlocked();
+  const result = await inFlight;
   recordReconcileJob(started, result);
   return result;
 }
@@ -45,38 +76,56 @@ async function pullTraktHistoryUnlocked(): Promise<{
   error?: string;
 }> {
   await refreshDueTokens();
-  const row = getConnection("trakt");
+  let row = getConnection("trakt");
   const app = row ? readTraktAppSecrets(row) : null;
-  const token = row ? readAccessToken(row) : null;
+  let token = row ? readAccessToken(row) : null;
   if (!app || !token) {
     return { count: 0, matched: 0, error: "Trakt is not connected." };
   }
   const fetchedAt = new Date();
   const items: SnapshotRow[] = [];
   try {
-    for (const type of ["movies", "episodes"] as const) {
-      let page = 1;
-      let pageCount = 1;
-      while (page <= pageCount) {
-        const res = await traktGetHistoryPage(app.clientId, token, type, page);
-        if (res.status === 401) {
+    let page = 1;
+    let pageCount = 1;
+    while (page <= pageCount) {
+      let res = await traktGetHistoryPage(
+        app.clientId,
+        token,
+        null,
+        page,
+        100,
+        {
+          extended: true,
+        },
+      );
+      if (res.status === 401) {
+        const refreshed = await refreshTraktConnection();
+        row = getConnection("trakt");
+        token = row ? readAccessToken(row) : null;
+        if (!refreshed || !token) {
           throw new UpstreamError("Trakt token was rejected.", 401);
         }
-        if (res.status >= 400) {
-          throw new UpstreamError("Could not load Trakt history.", res.status);
-        }
-        pageCount = Math.max(1, res.pageCount);
-        for (const item of res.items) {
-          const mapped = mapHistoryItem(item, type);
-          if (mapped) {
-            items.push(mapped);
-          }
-        }
-        if (res.items.length === 0) {
-          break;
-        }
-        page += 1;
+        res = await traktGetHistoryPage(app.clientId, token, null, page, 100, {
+          extended: true,
+        });
       }
+      if (res.status === 401) {
+        throw new UpstreamError("Trakt token was rejected.", 401);
+      }
+      if (res.status >= 400) {
+        throw new UpstreamError("Could not load Trakt history.", res.status);
+      }
+      pageCount = Math.max(1, res.pageCount);
+      for (const item of res.items) {
+        const mapped = mapHistoryItem(item);
+        if (mapped) {
+          items.push(mapped);
+        }
+      }
+      if (res.items.length === 0) {
+        break;
+      }
+      page += 1;
     }
   } catch (err) {
     logger.error({ err }, "Trakt history pull failed");
@@ -162,33 +211,31 @@ export async function fetchHistoryWindow(
   range: { startAt: Date; endAt: Date },
 ): Promise<SnapshotRow[]> {
   const items: SnapshotRow[] = [];
-  for (const type of ["movies", "episodes"] as const) {
-    let page = 1;
-    let pageCount = 1;
-    while (page <= pageCount) {
-      const res = await traktGetHistoryPage(
-        clientId,
-        accessToken,
-        type,
-        page,
-        100,
-        range,
-      );
-      if (res.status >= 400) {
-        throw new UpstreamError("Could not load Trakt history.", res.status);
-      }
-      pageCount = Math.max(1, res.pageCount);
-      for (const item of res.items) {
-        const mapped = mapHistoryItem(item, type);
-        if (mapped) {
-          items.push(mapped);
-        }
-      }
-      if (res.items.length === 0) {
-        break;
-      }
-      page += 1;
+  let page = 1;
+  let pageCount = 1;
+  while (page <= pageCount) {
+    const res = await traktGetHistoryPage(
+      clientId,
+      accessToken,
+      null,
+      page,
+      100,
+      { ...range, extended: true },
+    );
+    if (res.status >= 400) {
+      throw new UpstreamError("Could not load Trakt history.", res.status);
     }
+    pageCount = Math.max(1, res.pageCount);
+    for (const item of res.items) {
+      const mapped = mapHistoryItem(item);
+      if (mapped) {
+        items.push(mapped);
+      }
+    }
+    if (res.items.length === 0) {
+      break;
+    }
+    page += 1;
   }
   return items;
 }
@@ -204,21 +251,115 @@ export function deleteSnapshotsByHistoryIds(ids: number[]): void {
 }
 
 export function listSnapshots(): SnapshotRow[] {
-  return getDb()
-    .select()
+  return getDb().select().from(traktHistorySnapshot).all().map(rowToSnapshot);
+}
+
+export function snapshotCount(): number {
+  const row = getDb()
+    .select({ n: sql<number>`count(*)` })
     .from(traktHistorySnapshot)
-    .all()
-    .map((row) => ({
-      traktHistoryId: row.traktHistoryId,
-      kind: row.kind === "episode" ? "episode" : "movie",
-      tmdbId: row.tmdbId,
-      imdbId: row.imdbId,
-      tvdbId: row.tvdbId,
-      showTmdbId: null,
-      seasonNumber: row.seasonNumber,
-      episodeNumber: row.episodeNumber,
-      watchedAtUtc: row.watchedAtUtc,
-    }));
+    .get();
+  return Number(row?.n ?? 0);
+}
+
+export function snapshotFetchedAt(): Date | null {
+  const row = getDb()
+    .select({ fetchedAt: sql<number>`max(${traktHistorySnapshot.fetchedAt})` })
+    .from(traktHistorySnapshot)
+    .get();
+  if (row?.fetchedAt == null) {
+    return null;
+  }
+  const at = new Date(row.fetchedAt);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
+
+export function snapshotMissingPayload(): boolean {
+  const row = getDb()
+    .select({ n: sql<number>`count(*)` })
+    .from(traktHistorySnapshot)
+    .where(
+      or(
+        isNull(traktHistorySnapshot.payloadJson),
+        eq(traktHistorySnapshot.payloadJson, ""),
+      ),
+    )
+    .get();
+  return Number(row?.n ?? 0) > 0;
+}
+
+export function listHistoryItemsInRange(
+  start: Date,
+  end: Date,
+): TraktHistoryItem[] {
+  return parsePayloadRows(
+    getDb()
+      .select()
+      .from(traktHistorySnapshot)
+      .where(
+        and(
+          gte(traktHistorySnapshot.watchedAtUtc, start),
+          lt(traktHistorySnapshot.watchedAtUtc, end),
+        ),
+      )
+      .orderBy(asc(traktHistorySnapshot.watchedAtUtc))
+      .all(),
+  );
+}
+
+export function countHistoryItemsInRange(start: Date, end: Date): number {
+  const row = getDb()
+    .select({ n: sql<number>`count(*)` })
+    .from(traktHistorySnapshot)
+    .where(
+      and(
+        gte(traktHistorySnapshot.watchedAtUtc, start),
+        lt(traktHistorySnapshot.watchedAtUtc, end),
+      ),
+    )
+    .get();
+  return Number(row?.n ?? 0);
+}
+
+export function listRecentHistoryItems(limit: number): TraktHistoryItem[] {
+  return parsePayloadRows(
+    getDb()
+      .select()
+      .from(traktHistorySnapshot)
+      .orderBy(desc(traktHistorySnapshot.watchedAtUtc))
+      .limit(limit)
+      .all(),
+  );
+}
+
+export function upsertSnapshotRows(items: SnapshotRow[]): void {
+  const fetchedAt = new Date();
+  for (const item of items) {
+    if (item.traktHistoryId != null) {
+      getDb()
+        .delete(traktHistorySnapshot)
+        .where(eq(traktHistorySnapshot.traktHistoryId, item.traktHistoryId))
+        .run();
+    }
+    getDb()
+      .insert(traktHistorySnapshot)
+      .values({
+        id: newId(),
+        traktHistoryId: item.traktHistoryId,
+        kind: item.kind,
+        tmdbId: item.tmdbId,
+        imdbId: item.imdbId,
+        tvdbId: item.tvdbId,
+        showTmdbId: item.showTmdbId,
+        seasonNumber: item.seasonNumber,
+        episodeNumber: item.episodeNumber,
+        watchedAtUtc: item.watchedAtUtc,
+        action: "watch",
+        payloadJson: item.payloadJson,
+        fetchedAt,
+      })
+      .run();
+  }
 }
 
 export function toSnapshotPlay(row: SnapshotRow): SnapshotPlay {
@@ -247,22 +388,22 @@ function replaceSnapshots(items: SnapshotRow[], fetchedAt: Date): void {
         tmdbId: item.tmdbId,
         imdbId: item.imdbId,
         tvdbId: item.tvdbId,
+        showTmdbId: item.showTmdbId,
         seasonNumber: item.seasonNumber,
         episodeNumber: item.episodeNumber,
         watchedAtUtc: item.watchedAtUtc,
         action: "watch",
+        payloadJson: item.payloadJson,
         fetchedAt,
       })
       .run();
   }
 }
 
-function mapHistoryItem(
-  item: TraktHistoryItem,
-  type: "movies" | "episodes",
-): SnapshotRow | null {
+export function mapHistoryItem(item: TraktHistoryItem): SnapshotRow | null {
   const watchedAt = item.watched_at ? new Date(item.watched_at) : null;
-  if (type === "movies") {
+  const isMovie = item.type === "movie" || Boolean(item.movie && !item.episode);
+  if (isMovie) {
     const ids = item.movie?.ids;
     return {
       traktHistoryId: item.id ?? null,
@@ -275,6 +416,7 @@ function mapHistoryItem(
       episodeNumber: null,
       watchedAtUtc:
         watchedAt && !Number.isNaN(watchedAt.getTime()) ? watchedAt : null,
+      payloadJson: JSON.stringify(item),
     };
   }
   const episodeIds = item.episode?.ids;
@@ -290,7 +432,54 @@ function mapHistoryItem(
     episodeNumber: item.episode?.number ?? null,
     watchedAtUtc:
       watchedAt && !Number.isNaN(watchedAt.getTime()) ? watchedAt : null,
+    payloadJson: JSON.stringify(item),
   };
+}
+
+function rowToSnapshot(row: {
+  traktHistoryId: number | null;
+  kind: string | null;
+  tmdbId: number | null;
+  imdbId: string | null;
+  tvdbId: number | null;
+  showTmdbId: number | null;
+  seasonNumber: number | null;
+  episodeNumber: number | null;
+  watchedAtUtc: Date | null;
+  payloadJson: string | null;
+}): SnapshotRow {
+  return {
+    traktHistoryId: row.traktHistoryId,
+    kind: row.kind === "episode" ? "episode" : "movie",
+    tmdbId: row.tmdbId,
+    imdbId: row.imdbId,
+    tvdbId: row.tvdbId,
+    showTmdbId: row.showTmdbId,
+    seasonNumber: row.seasonNumber,
+    episodeNumber: row.episodeNumber,
+    watchedAtUtc: row.watchedAtUtc,
+    payloadJson: row.payloadJson,
+  };
+}
+
+function parsePayloadRows(
+  rows: Array<{ payloadJson: string | null }>,
+): TraktHistoryItem[] {
+  const raw: unknown[] = [];
+  for (const row of rows) {
+    if (!row.payloadJson) {
+      continue;
+    }
+    try {
+      raw.push(JSON.parse(row.payloadJson) as unknown);
+    } catch {
+      // skip a corrupt cache row
+    }
+  }
+  if (raw.length === 0) {
+    return [];
+  }
+  return parseTraktHistoryItems(raw);
 }
 
 export function reconciliationWindowMinutes(): number {

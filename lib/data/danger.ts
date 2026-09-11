@@ -30,6 +30,7 @@ export function wipeLocalHistory(): void {
     sqlite.exec("delete from media_items");
     sqlite.exec("delete from genres");
     sqlite.exec("delete from trakt_history_snapshot");
+    sqlite.exec("delete from tmdb_title_cache");
     sqlite.exec("delete from job_runs");
     sqlite.exec(
       "update jobs set status = 'idle', started_at = null, finished_at = null, stats_json = null, error = null, items_processed = 0",
@@ -39,6 +40,7 @@ export function wipeLocalHistory(): void {
   setSettingJson("ingest.last_stats", null);
   setSettingJson("sync.last_stats", null);
   setSettingJson("data.import_preview", null);
+  setSettingJson("trakt.calendar_cache", null);
   writeAudit({
     action: "data.wipe_local_history",
     subjectType: "watch_events",

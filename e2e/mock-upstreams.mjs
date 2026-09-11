@@ -196,6 +196,10 @@ const server = http.createServer(async (req, res) => {
     send(res, 200, []);
     return;
   }
+  if (path === "/sync/history" && method === "GET") {
+    send(res, 200, [TRAKT_MOVIE]);
+    return;
+  }
   if (path === "/sync/history" && method === "POST") {
     await readBody(req);
     send(res, 200, {
@@ -220,6 +224,16 @@ const server = http.createServer(async (req, res) => {
 
   if (path === "/3/authentication") {
     send(res, 200, { success: true });
+    return;
+  }
+  if (path.startsWith("/3/movie/") || path.startsWith("/3/tv/")) {
+    send(res, 200, {
+      id: 27205,
+      poster_path: "/inception.jpg",
+      backdrop_path: "/inception-wide.jpg",
+      networks: [],
+      production_companies: [],
+    });
     return;
   }
 

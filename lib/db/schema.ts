@@ -151,16 +151,32 @@ export const traktHistorySnapshot = sqliteTable(
     tmdbId: integer("tmdb_id"),
     imdbId: text("imdb_id"),
     tvdbId: integer("tvdb_id"),
+    showTmdbId: integer("show_tmdb_id"),
     seasonNumber: integer("season_number"),
     episodeNumber: integer("episode_number"),
     watchedAtUtc: integer("watched_at_utc", { mode: "timestamp_ms" }),
     action: text("action"),
+    payloadJson: text("payload_json"),
     fetchedAt: integer("fetched_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => [
     index("trakt_history_tmdb_watched").on(table.tmdbId, table.watchedAtUtc),
+    index("trakt_history_watched").on(table.watchedAtUtc),
   ],
 );
+
+export const tmdbTitleCache = sqliteTable("tmdb_title_cache", {
+  id: text("id").primaryKey(),
+  kind: text("kind", { enum: ["movie", "tv"] }).notNull(),
+  tmdbId: integer("tmdb_id").notNull(),
+  poster: text("poster"),
+  backdrop: text("backdrop"),
+  networksJson: text("networks_json").notNull().default("[]"),
+  companiesJson: text("companies_json").notNull().default("[]"),
+  networkOrgsJson: text("network_orgs_json").notNull().default("[]"),
+  companyOrgsJson: text("company_orgs_json").notNull().default("[]"),
+  fetchedAt: integer("fetched_at", { mode: "timestamp_ms" }).notNull(),
+});
 
 export const providerSnapshots = sqliteTable("provider_snapshots", {
   id: text("id").primaryKey(),

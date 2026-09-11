@@ -20,12 +20,23 @@ import {
 } from "../db/schema";
 import { newId } from "../ids";
 import { logger } from "../logger";
+import { HISTORY_TTL_MS } from "../trakt/cache";
 import { retryAfterMs, traktPostHistory } from "../trakt/history";
+import { markAlreadyOnTrakt } from "./already";
 import { MAX_SYNC_ATTEMPTS, nextAttemptAt, shouldRetryStatus } from "./backoff";
 import { matchSnapshot } from "./match";
 import { buildHistoryBody, type SyncCandidate } from "./payload";
 import { capturePostedRemoteIds, WATCHLOG_POSTED } from "./posted";
-import { listSnapshots, pullTraktHistory } from "./reconcile";
+import {
+  fetchHistoryWindow,
+  listSnapshots,
+  pullTraktHistory,
+  snapshotCount,
+  snapshotFetchedAt,
+  snapshotMissingPayload,
+  toSnapshotPlay,
+  upsertSnapshotRows,
+} from "./reconcile";
 import { applyPostResponse } from "./response";
 import { shouldPostRecord } from "./sendable";
 import { getCircuit, getSyncSettings, saveCircuit } from "./settings";
@@ -33,6 +44,14 @@ import { getCircuit, getSyncSettings, saveCircuit } from "./settings";
 const BATCH = 100;
 const CIRCUIT_FAILURES = 5;
 const CIRCUIT_PAUSE_MS = 15 * 60_000;
+
+function snapshotIsStale(now = Date.now()): boolean {
+  const at = snapshotFetchedAt();
+  if (!at) {
+    return true;
+  }
+  return now - at.getTime() > HISTORY_TTL_MS;
+}
 
 export type SyncStats = {
   considered: number;
@@ -114,19 +133,45 @@ async function runSyncUnlocked(opts?: {
     return stats;
   }
 
-  const pulled = await pullTraktHistory();
-  if (pulled.error) {
-    stats.error = pulled.error;
-    bumpCircuit();
-    persistStats(stats, started);
-    return stats;
+  const targeted = Boolean(opts?.eventIds?.length);
+  if (!targeted) {
+    const needsPull =
+      snapshotCount() === 0 || snapshotMissingPayload() || snapshotIsStale();
+    if (needsPull) {
+      const pulled = await pullTraktHistory();
+      if (pulled.error) {
+        stats.error = pulled.error;
+        bumpCircuit();
+        persistStats(stats, started);
+        return stats;
+      }
+      stats.alreadyOnTrakt = pulled.matched ?? 0;
+      stats.synced += stats.alreadyOnTrakt;
+    } else {
+      const matched = markAlreadyOnTrakt(listSnapshots().map(toSnapshotPlay));
+      stats.alreadyOnTrakt = matched;
+      stats.synced += matched;
+    }
   }
-  stats.alreadyOnTrakt = pulled.matched ?? 0;
-  stats.synced += stats.alreadyOnTrakt;
-  const snapshots = listSnapshots();
+  let snapshots = listSnapshots();
   const windowMinutes = settings.windowMinutes;
   const candidates = loadCandidates(opts?.eventIds, opts?.ignoreCutoff);
   stats.considered = candidates.length;
+
+  if (targeted && snapshots.length === 0 && candidates.length > 0) {
+    const times = candidates.map((item) => item.watchedAt.getTime());
+    const padMs = windowMinutes * 60_000;
+    try {
+      const windowed = await fetchHistoryWindow(app.clientId, token, {
+        startAt: new Date(Math.min(...times) - padMs),
+        endAt: new Date(Math.max(...times) + padMs),
+      });
+      upsertSnapshotRows(windowed);
+      snapshots = listSnapshots();
+    } catch (err) {
+      logger.warn({ err }, "windowed Trakt history fetch failed");
+    }
+  }
 
   const toSend: SyncCandidate[] = [];
   for (const item of candidates) {

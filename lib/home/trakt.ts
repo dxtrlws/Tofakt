@@ -12,13 +12,13 @@ import { getDb } from "../db";
 import { mediaItems } from "../db/schema";
 import { formatSeasonEpisode } from "../history/query";
 import { logger } from "../logger";
-import { tmdbPosterUrl } from "../tmdb/poster";
-import { traktGetShowCalendar } from "../trakt/calendar";
 import {
-  type TraktHistoryItem,
-  traktGetRecentHistory,
-  traktHistoryInRange,
-} from "../trakt/history";
+  listHistoryItemsInRange,
+  listRecentHistoryItems,
+} from "../sync/reconcile";
+import { tmdbPosterUrl } from "../tmdb/poster";
+import { ensureHistorySnapshot, loadCachedShowCalendar } from "../trakt/cache";
+import type { TraktHistoryItem } from "../trakt/history";
 import type { HomeMonth, HomePoster } from "./types";
 import { isoDate } from "./upcoming";
 
@@ -46,28 +46,20 @@ export async function traktCreds(): Promise<TraktCreds | null> {
 }
 
 export async function loadTraktRecent(
-  creds: TraktCreds,
+  _creds: TraktCreds,
   now: Date,
 ): Promise<HomePoster[]> {
-  const res = await traktGetRecentHistory(creds.clientId, creds.token, 12);
-  if (res.status === 401) {
-    await refreshTraktConnection();
-    const retry = await traktCreds();
-    if (!retry) {
-      return [];
-    }
-    const again = await traktGetRecentHistory(retry.clientId, retry.token, 12);
-    return postersFromHistory(again.items, now);
-  }
-  return postersFromHistory(res.items, now);
+  await ensureHistorySnapshot({ revalidate: false });
+  return postersFromHistory(listRecentHistoryItems(12), now);
 }
 
 export async function loadTraktMonth(
-  creds: TraktCreds,
+  _creds: TraktCreds,
   timeZone: string,
   range: { start: Date; end: Date; name: string },
 ): Promise<HomeMonth> {
-  const items = await historyInRange(creds, range.start, range.end);
+  await ensureHistorySnapshot({ revalidate: false });
+  const items = listHistoryItemsInRange(range.start, range.end);
   return monthFromHistory(items, timeZone, range.name);
 }
 
@@ -83,7 +75,7 @@ export async function loadTraktUpcoming(
   creds: TraktCreds,
   startDate: string,
 ): Promise<Array<HomePoster & { episodeType: string | null }>> {
-  const res = await traktGetShowCalendar(
+  const items = await loadCachedShowCalendar(
     creds.clientId,
     creds.token,
     startDate,
@@ -91,7 +83,7 @@ export async function loadTraktUpcoming(
   );
   const posters: Array<HomePoster & { episodeType: string | null }> = [];
   const refs: ArtRef[] = [];
-  for (const item of res.items) {
+  for (const item of items) {
     const aired = new Date(item.first_aired);
     if (Number.isNaN(aired.getTime())) {
       continue;
@@ -219,20 +211,6 @@ function mapHistoryItem(
       artworkKey: key,
     },
   };
-}
-
-async function historyInRange(
-  creds: TraktCreds,
-  start: Date,
-  end: Date,
-): Promise<TraktHistoryItem[]> {
-  const res = await traktHistoryInRange(
-    creds.clientId,
-    creds.token,
-    start,
-    end,
-  );
-  return res.items;
 }
 
 function monthFromHistory(

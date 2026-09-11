@@ -55,12 +55,10 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
   await test.step("change sync mode then restore manual", async () => {
     await page.goto("/settings/sync");
     await page.getByRole("radio", { name: /^Newly watched only/ }).check();
-    await page.getByRole("button", { name: "Save mode" }).click();
     await expect(
       page.getByText(/Only plays that finish after now will queue/),
     ).toBeVisible();
     await page.getByRole("radio", { name: /^Manual/ }).check();
-    await page.getByRole("button", { name: "Save mode" }).click();
     await expect(page.getByText(/Manual mode/)).toBeVisible();
   });
 

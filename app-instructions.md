@@ -609,6 +609,7 @@ Primary distribution channel.
 | `TMDB_API_KEY` | — | Optional seed |
 | `WATCHLOG_BUILD` | `dev` / git SHA | About panel build id |
 | `WATCHLOG_DISABLE_SCHEDULER` | — | Set `1` to disable scheduler (e2e) |
+| `WATCHLOG_DEV_ORIGINS` | NIC addresses | Extra hostnames for `next dev` `allowedDevOrigins` (tunnels); ignored in production |
 | `PUID` / `PGID` | `1000` | Docker volume ownership |
 | `NEXT_TELEMETRY_DISABLED` | `1` in image | |
 

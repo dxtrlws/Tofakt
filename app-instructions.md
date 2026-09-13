@@ -4,11 +4,25 @@ A self-hosted web app that watches your **tofa** media server, records everythin
 
 This document is the single source of truth for an AI coding agent working on the app. Read it end to end before changing code. Agents should cite **`app-instructions.md`**, not `README.md`.
 
-Package version: **0.2.0**. Image: `ghcr.io/dxtrlws/watchlog`.
+Package version: **0.3.0**. Image: `ghcr.io/dxtrlws/watchlog`.
 
 ---
 
-## Changelog (as-built rewrite)
+## Changelog
+
+### 0.3.0 — 2026-09-13
+
+**Added**
+
+- History multi-select so several plays can be synced to Trakt at once.
+- Settings → About compares the running version to the latest GitHub release (`WATCHLOG_GITHUB_TOKEN` for the private repo).
+- `next dev` serves the LAN Network URL (`WATCHLOG_DEV_ORIGINS` / NIC addresses).
+
+**Changed**
+
+- Ingest and reconcile actions are **Import from Tofa** / **Import from Trakt**. Unused backfill and bulk undo paths were removed.
+
+### As-built rewrite
 
 **Added**
 
@@ -19,7 +33,6 @@ Package version: **0.2.0**. Image: `ghcr.io/dxtrlws/watchlog`.
 - Scheduler vs on-demand sync distinction; Trakt-primary monthly/year reviews.
 - Explicit “not implemented” callouts for gaps that still appear in product copy.
 - Live **`/styleguide`** route (token + primitive samples; linked from Settings → About).
-- Settings → About compares the running version to the latest GitHub release (`WATCHLOG_GITHUB_TOKEN` for the private repo).
 
 **Modified**
 

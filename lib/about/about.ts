@@ -12,6 +12,7 @@ import { traktLimiter } from "../trakt/rate-limit";
 import { formatBytes, formatStamp, formatUptime } from "./about-format";
 import { processStartedAt } from "./boot";
 import { currentBuild } from "./build";
+import { currentVersion } from "./version";
 
 export type AboutFacts = {
   version: string;
@@ -55,7 +56,7 @@ function databaseBytes(): number {
 export function aboutFacts(): AboutFacts {
   const count = watchEventTotal();
   return {
-    version: process.env.npm_package_version ?? "0.2.1",
+    version: currentVersion(),
     build: currentBuild(),
     uptime: formatUptime(Date.now() - processStartedAt),
     database: formatBytes(databaseBytes()),

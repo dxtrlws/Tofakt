@@ -122,4 +122,15 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
       page.getByRole("heading", { name: "Inception" }).first(),
     ).toBeVisible();
   });
+
+  await test.step("about lists a newer GitHub release", async () => {
+    await page.goto("/settings/about");
+    await expect(page.getByText("Version", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "99.0.0 available" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Pull ghcr.io/dxtrlws/watchlog:99.0.0"),
+    ).toBeVisible();
+  });
 });

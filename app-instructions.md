@@ -19,6 +19,7 @@ Package version: **0.2.0**. Image: `ghcr.io/dxtrlws/watchlog`.
 - Scheduler vs on-demand sync distinction; Trakt-primary monthly/year reviews.
 - Explicit “not implemented” callouts for gaps that still appear in product copy.
 - Live **`/styleguide`** route (token + primitive samples; linked from Settings → About).
+- Settings → About compares the running version to the latest GitHub release (`WATCHLOG_GITHUB_TOKEN` for the private repo).
 
 **Modified**
 
@@ -516,7 +517,7 @@ Completed years + live current-year preview. Totals, sparklines, top lists, bing
 
 **Logs** — job runs, audit log / diagnostics.
 
-**About** — version / `WATCHLOG_BUILD`, uptime, DB size, counts, rate-limit / circuit state, TMDB + Trakt attribution; link to `/styleguide`.
+**About** — version / `WATCHLOG_BUILD`, GitHub update check, uptime, DB size, counts, rate-limit / circuit state, TMDB + Trakt attribution; link to `/styleguide`.
 
 ---
 
@@ -571,7 +572,7 @@ The app holds credentials that grant access to a media server and a Trakt accoun
 - **CSRF:** same-origin / Host / `X-Forwarded-*` / `BASE_URL` checks on mutations — **no separate CSRF token cookie**.
 - **Rate-limit login** in-process (IP + username buckets).
 - **SSRF guard** on tofa base URL (`lib/net/ssrf.ts`); loopback Docker hint in the connection UI.
-- **Egress only to configured hosts.** No analytics / telemetry / phone-home.
+- **Egress only to configured hosts.** No analytics / telemetry / background phone-home. Settings → About may query GitHub for the latest release when opened (cached; optional `WATCHLOG_GITHUB_TOKEN` because the repo is private).
 - **`GET /api/health`** is intentionally unauthenticated for container health checks.
 
 ---
@@ -608,6 +609,11 @@ Primary distribution channel.
 | `TRAKT_API_URL`, `TMDB_API_URL` | Trakt/TMDB defaults | Test / mock bases |
 | `TMDB_API_KEY` | — | Optional seed |
 | `WATCHLOG_BUILD` | `dev` / git SHA | About panel build id |
+| `WATCHLOG_VERSION` | `package.json` / git tag | About panel version (baked into the image) |
+| `WATCHLOG_GITHUB_TOKEN` | — | PAT with `repo` so About can see private GitHub releases |
+| `WATCHLOG_GITHUB_REPO` | `dxtrlws/Tofakt-` | `owner/repo` for the update check |
+| `WATCHLOG_GITHUB_API_URL` | `https://api.github.com` | Test / mock GitHub API base |
+| `WATCHLOG_DISABLE_UPDATE_CHECK` | — | Set `1` to skip the About GitHub lookup |
 | `WATCHLOG_DISABLE_SCHEDULER` | — | Set `1` to disable scheduler (e2e) |
 | `WATCHLOG_DEV_ORIGINS` | NIC addresses | Extra hostnames for `next dev` `allowedDevOrigins` (tunnels); ignored in production |
 | `PUID` / `PGID` | `1000` | Docker volume ownership |

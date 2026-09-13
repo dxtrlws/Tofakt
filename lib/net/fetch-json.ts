@@ -1,3 +1,5 @@
+import { currentVersion } from "../about/version";
+
 export class UpstreamError extends Error {
   constructor(
     message: string,
@@ -27,7 +29,7 @@ export async function fetchJson(
       signal: controller.signal,
       headers: {
         accept: "application/json",
-        "user-agent": "watchlog/0.2.1",
+        "user-agent": `watchlog/${currentVersion()}`,
         ...init.headers,
       },
     });
@@ -67,7 +69,7 @@ export async function fetchBytes(
       ...init,
       signal: controller.signal,
       headers: {
-        "user-agent": "watchlog/0.2.1",
+        "user-agent": `watchlog/${currentVersion()}`,
         ...init.headers,
       },
     });

@@ -5,11 +5,13 @@ services:
       context: .
       args:
         WATCHLOG_BUILD: ${WATCHLOG_BUILD:-dev}
+        WATCHLOG_VERSION: ${WATCHLOG_VERSION:-}
     ports:
       - "9477:9477"
     environment:
       TZ: UTC
       DATABASE_PATH: /data/watchlog.db
+      WATCHLOG_GITHUB_TOKEN: ${WATCHLOG_GITHUB_TOKEN:-}
     volumes:
       - watchlog-data:/data
     restart: unless-stopped

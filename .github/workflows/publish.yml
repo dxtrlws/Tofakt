@@ -47,6 +47,7 @@ jobs:
           annotations: ${{ steps.meta.outputs.annotations }}
           build-args: |
             WATCHLOG_BUILD=${{ github.sha }}
+            WATCHLOG_VERSION=${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: mode=max

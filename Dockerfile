@@ -8,7 +8,9 @@ RUN npm ci
 
 COPY . .
 ARG WATCHLOG_BUILD=dev
+ARG WATCHLOG_VERSION
 ENV WATCHLOG_BUILD=$WATCHLOG_BUILD
+ENV WATCHLOG_VERSION=$WATCHLOG_VERSION
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_PATH=/tmp/watchlog-build.db
 RUN npm run build
@@ -16,7 +18,9 @@ RUN npm run build
 FROM node:22-alpine AS runner
 
 ARG WATCHLOG_BUILD=dev
+ARG WATCHLOG_VERSION
 ENV WATCHLOG_BUILD=$WATCHLOG_BUILD
+ENV WATCHLOG_VERSION=$WATCHLOG_VERSION
 
 LABEL org.opencontainers.image.title="Watchlog" \
   org.opencontainers.image.description="Records plays from tofa, syncs them to Trakt, and builds monthly and yearly reviews." \

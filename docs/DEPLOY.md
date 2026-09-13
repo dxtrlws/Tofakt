@@ -11,6 +11,8 @@ docker compose up -d --no-build
 
 Version tags are `x.y.z` and `x.y`. `latest` tracks the newest version tag. Each publish includes an SBOM and provenance attestation.
 
+Settings → About compares the running version to the latest GitHub release. The repo and GHCR package are private, so set `WATCHLOG_GITHUB_TOKEN` to a GitHub token that can read the repo (the same `read:packages` + `repo` token used to pull the image). Without it, About still lists the installed version and notes that the repo is private. The check runs only when someone opens About, then caches the GitHub response for several hours.
+
 Set `BASE_URL` to the public origin when you put the app behind a reverse proxy so session cookies and links stay on the right host. Forward `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-For`.
 
 Optional `PUID` / `PGID` (default `1000`) fix NAS volume ownership. The container starts as root only long enough to `chown /data`, then drops to that user.

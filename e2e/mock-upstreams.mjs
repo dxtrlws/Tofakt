@@ -137,6 +137,16 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (path === "/repos/dxtrlws/Tofakt-/releases/latest") {
+    send(res, 200, {
+      tag_name: "v99.0.0",
+      html_url: "https://github.com/dxtrlws/Tofakt-/releases/tag/v99.0.0",
+      prerelease: false,
+      draft: false,
+    });
+    return;
+  }
+
   if (path === "/api/v1/auth/status") {
     send(res, 200, {
       claimed: true,

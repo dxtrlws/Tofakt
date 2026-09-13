@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { ToastSeedHost } from "@/components/toast/seed-host";
 import { aboutFacts } from "@/lib/about/about";
+import { checkForGithubUpdate } from "@/lib/about/update-check";
 import { requireUser } from "@/lib/auth/require";
 
 export const dynamic = "force-dynamic";
@@ -9,13 +10,25 @@ export const dynamic = "force-dynamic";
 export default async function AboutPage() {
   await requireUser();
   const facts = aboutFacts();
-  const rows = [
+  const update = await checkForGithubUpdate(facts.version);
+  const rows: Array<{
+    label: string;
+    value: string;
+    href?: string;
+  }> = [
     { label: "Version", value: facts.version },
     { label: "Build", value: facts.build },
     { label: "Uptime", value: facts.uptime },
     { label: "Database", value: facts.database },
     { label: "Events", value: facts.events },
   ];
+  if (update) {
+    rows.push({
+      label: "Updates",
+      value: update.label,
+      href: update.kind === "available" ? update.href : undefined,
+    });
+  }
 
   return (
     <>
@@ -31,12 +44,28 @@ export default async function AboutPage() {
               <span className="grow basis-0 text-body leading-[18px] text-fg">
                 {row.label}
               </span>
-              <span className="w-[200px] shrink-0 text-right text-ui leading-[18px] text-fg-muted">
-                {row.value}
-              </span>
+              {row.href ? (
+                <a
+                  className="w-[200px] shrink-0 text-right text-ui leading-[18px] text-accent underline underline-offset-2"
+                  href={row.href}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {row.value}
+                </a>
+              ) : (
+                <span className="w-[200px] shrink-0 text-right text-ui leading-[18px] text-fg-muted">
+                  {row.value}
+                </span>
+              )}
             </div>
           ))}
         </section>
+        {update?.detail ? (
+          <p className="text-ui leading-[18px] text-fg-muted">
+            {update.detail}
+          </p>
+        ) : null}
         <p className="text-ui leading-[18px] text-fg-muted">
           Job history and the audit trail are on{" "}
           <Link

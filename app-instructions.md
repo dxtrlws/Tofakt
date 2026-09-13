@@ -4,11 +4,17 @@ A self-hosted web app that watches your **tofa** media server, records everythin
 
 This document is the single source of truth for an AI coding agent working on the app. Read it end to end before changing code. Agents should cite **`app-instructions.md`**, not `README.md`.
 
-Package version: **0.3.0**. Image: `ghcr.io/dxtrlws/watchlog`.
+Package version: **0.3.1**. Image: `ghcr.io/dxtrlws/watchlog`.
 
 ---
 
 ## Changelog
+
+### 0.3.1 — 2026-09-13
+
+**Changed**
+
+- Yearly Top 10 watched shows and movies use the same headline style as other year-in-review sections.
 
 ### 0.3.0 — 2026-09-13
 

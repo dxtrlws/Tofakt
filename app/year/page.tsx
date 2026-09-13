@@ -52,7 +52,10 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
               />
             ) : null}
             <YearKindStats stats={review.tv} />
-            <YearTop10 items={review.topShows} title="Top 10 watched shows" />
+            <YearTop10
+              items={review.topShows}
+              title={"Top 10 Watched\nShows"}
+            />
             <MonthGenreWatch
               items={review.tvGenres}
               title={"Most Watched\nShow Genres"}
@@ -76,7 +79,10 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
               unit="show"
             />
             <YearKindStats stats={review.movies} />
-            <YearTop10 items={review.topMovies} title="Top 10 watched movies" />
+            <YearTop10
+              items={review.topMovies}
+              title={"Top 10 Watched\nMovies"}
+            />
             <MonthGenreWatch
               items={review.movieGenres}
               title={"Most Watched\nMovie Genres"}

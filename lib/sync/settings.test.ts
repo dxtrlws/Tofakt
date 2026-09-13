@@ -37,4 +37,13 @@ describe("getSyncSettings", () => {
       reconcileEveryMinutes: 180,
     });
   });
+
+  it("treats a stored backfill mode as manual", () => {
+    store.set("sync.settings", {
+      mode: "backfill",
+      backfillConfirmedAt: "2026-09-13T00:00:00.000Z",
+    });
+    expect(getSyncSettings().mode).toBe("manual");
+    expect(getSyncSettings()).not.toHaveProperty("backfillConfirmedAt");
+  });
 });

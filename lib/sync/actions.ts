@@ -14,13 +14,9 @@ import { restartScheduler } from "../scheduler";
 import type { ActionFlash } from "../toast/flash";
 import { reply } from "../toast/persist";
 import { tofaLibraries } from "../tofa/client";
-import {
-  applyForwardCutoff,
-  backfillPreview,
-  clearBeforeCutoff,
-} from "./preview";
+import { applyForwardCutoff, clearBeforeCutoff } from "./preview";
 import { pullTraktHistory } from "./reconcile";
-import { removeOnePlay, removeWatchlogPosts } from "./remove";
+import { removeOnePlay } from "./remove";
 import { runSync, type SyncStats } from "./run";
 import {
   INGEST_INTERVAL_MAX,
@@ -150,37 +146,7 @@ export async function setSyncMode(
     };
     return reply(flash, refresh);
   }
-  if (mode === "backfill") {
-    return reply({ error: "Confirm the backfill preview first." });
-  }
   return reply({ error: "Unknown sync mode." });
-}
-
-export async function confirmBackfill(
-  _prev: SyncActionState | undefined,
-  _form?: FormData,
-): Promise<SyncActionState> {
-  const blocked = await guard();
-  if (blocked) {
-    return reply(blocked);
-  }
-  saveSyncSettings({
-    mode: "backfill",
-    backfillConfirmedAt: new Date().toISOString(),
-  });
-  clearBeforeCutoff();
-  const preview = backfillPreview();
-  writeAudit({
-    action: "sync.backfill_confirm",
-    subjectType: "settings",
-    detail: { eligible: preview.eligible },
-  });
-  return reply(
-    {
-      info: `Queued ${preview.eligible} plays for Trakt. Run sync to send them.`,
-    },
-    refresh,
-  );
 }
 
 export async function runSyncNow(
@@ -278,48 +244,6 @@ export async function removeWatchEvent(
     {
       error:
         "Could not remove this play from Trakt. Re-run reconciliation, then try again.",
-    },
-    refresh,
-  );
-}
-
-export async function undoWatchlogPosts(
-  _prev: SyncActionState | undefined,
-  _form?: FormData,
-): Promise<SyncActionState> {
-  const blocked = await guard();
-  if (blocked) {
-    return reply(blocked);
-  }
-  const stats = await removeWatchlogPosts();
-  writeAudit({
-    action: "sync.undo_watchlog_posts",
-    subjectType: "trakt",
-    detail: stats,
-  });
-  if (stats.error) {
-    return reply({ error: stats.error }, refresh);
-  }
-  if (stats.removed === 0 && stats.cleared === 0) {
-    return reply(
-      {
-        info: "Watchlog has not posted any plays to Trakt yet.",
-      },
-      refresh,
-    );
-  }
-  const parts: string[] = [];
-  if (stats.removed > 0) {
-    parts.push(`Removed ${stats.removed} Watchlog-posted plays from Trakt`);
-  }
-  if (stats.cleared > 0) {
-    parts.push(
-      `reset ${stats.cleared} that were not on Trakt so they can sync again`,
-    );
-  }
-  return reply(
-    {
-      info: `${parts.join(", ")}.`,
     },
     refresh,
   );

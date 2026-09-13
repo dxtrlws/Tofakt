@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   refreshDueTokens,
   refreshTraktConnection,
@@ -13,7 +13,6 @@ import { mediaItems, syncRecords, watchEvents } from "../db/schema";
 import { logger } from "../logger";
 import { type TraktRemoveResponse, traktRemoveHistory } from "../trakt/history";
 import { matchSnapshot } from "./match";
-import { isWatchlogPosted } from "./posted";
 import {
   deleteSnapshotsByHistoryIds,
   fetchHistoryWindow,
@@ -34,7 +33,6 @@ export type RemoveStats = {
 type RemovablePlay = {
   eventId: string;
   remoteId: number | null;
-  skipReason: string | null;
   status: string;
   kind: "movie" | "episode";
   tmdbId: number | null;
@@ -46,32 +44,8 @@ type RemovablePlay = {
   watchedAt: Date;
 };
 
-export function watchlogPostedCount(): number {
-  const row = getDb()
-    .select({ n: sql<number>`count(*)` })
-    .from(syncRecords)
-    .innerJoin(watchEvents, eq(watchEvents.id, syncRecords.watchEventId))
-    .where(
-      and(
-        eq(syncRecords.status, "synced"),
-        eq(syncRecords.skipReason, "watchlog_posted"),
-        eq(watchEvents.isComplete, true),
-      ),
-    )
-    .get();
-  return Number(row?.n ?? 0);
-}
-
-export function listWatchlogPosted(): RemovablePlay[] {
-  return loadPlays().filter(isWatchlogPosted);
-}
-
-export async function removeWatchlogPosts(): Promise<RemoveStats> {
-  return removePlays(listWatchlogPosted(), { watchlogPostedOnly: true });
-}
-
 export async function removeOnePlay(eventId: string): Promise<RemoveStats> {
-  const play = loadPlays([eventId])[0];
+  const play = loadPlay(eventId);
   if (!play || play.status !== "synced") {
     return {
       considered: 0,
@@ -81,13 +55,10 @@ export async function removeOnePlay(eventId: string): Promise<RemoveStats> {
       error: "This play is not synced to Trakt.",
     };
   }
-  return removePlays([play], { watchlogPostedOnly: false });
+  return removePlays([play]);
 }
 
-async function removePlays(
-  plays: RemovablePlay[],
-  opts: { watchlogPostedOnly: boolean },
-): Promise<RemoveStats> {
+async function removePlays(plays: RemovablePlay[]): Promise<RemoveStats> {
   const stats: RemoveStats = {
     considered: plays.length,
     removed: 0,
@@ -106,10 +77,6 @@ async function removePlays(
   const resolved: Array<RemovablePlay & { remoteId: number }> = [];
   const unresolved: RemovablePlay[] = [];
   for (const play of plays) {
-    if (opts.watchlogPostedOnly && !isWatchlogPosted(play)) {
-      stats.skipped += 1;
-      continue;
-    }
     const remoteId = await resolveRemoteId(play, creds.clientId, access);
     if (remoteId == null) {
       unresolved.push(play);
@@ -171,7 +138,7 @@ async function removePlays(
       );
     }
   }
-  logger.info(stats, "Removed Watchlog plays from Trakt");
+  logger.info(stats, "Removed play from Trakt");
   return stats;
 }
 
@@ -294,19 +261,11 @@ function traktCreds(): { clientId: string; token: string } | null {
   return { clientId: app.clientId, token };
 }
 
-function loadPlays(eventIds?: string[]): RemovablePlay[] {
-  const filters = [
-    eq(watchEvents.isComplete, true),
-    eq(syncRecords.status, "synced"),
-  ];
-  if (eventIds?.length) {
-    filters.push(inArray(watchEvents.id, eventIds));
-  }
-  return getDb()
+function loadPlay(eventId: string): RemovablePlay | undefined {
+  const row = getDb()
     .select({
       eventId: watchEvents.id,
       remoteId: syncRecords.remoteId,
-      skipReason: syncRecords.skipReason,
       status: syncRecords.status,
       kind: mediaItems.kind,
       tmdbId: mediaItems.tmdbId,
@@ -320,27 +279,29 @@ function loadPlays(eventIds?: string[]): RemovablePlay[] {
     .from(watchEvents)
     .innerJoin(syncRecords, eq(syncRecords.watchEventId, watchEvents.id))
     .leftJoin(mediaItems, eq(mediaItems.id, watchEvents.mediaItemId))
-    .where(and(...filters))
-    .all()
-    .map((row) => ({
-      eventId: row.eventId,
-      remoteId: row.remoteId ? Number.parseInt(row.remoteId, 10) : null,
-      skipReason: row.skipReason,
-      status: row.status,
-      kind: row.kind === "episode" ? ("episode" as const) : ("movie" as const),
-      tmdbId: row.tmdbId,
-      imdbId: row.imdbId,
-      tvdbId: row.tvdbId,
-      showTmdbId: row.showTmdbId,
-      seasonNumber: row.seasonNumber,
-      episodeNumber: row.episodeNumber,
-      watchedAt: row.watchedAt,
-    }))
-    .map((row) => ({
-      ...row,
-      remoteId:
-        row.remoteId != null && Number.isFinite(row.remoteId)
-          ? row.remoteId
-          : null,
-    }));
+    .where(
+      and(
+        eq(watchEvents.isComplete, true),
+        eq(syncRecords.status, "synced"),
+        eq(watchEvents.id, eventId),
+      ),
+    )
+    .get();
+  if (!row) {
+    return undefined;
+  }
+  const remoteId = row.remoteId ? Number.parseInt(row.remoteId, 10) : null;
+  return {
+    eventId: row.eventId,
+    remoteId: remoteId != null && Number.isFinite(remoteId) ? remoteId : null,
+    status: row.status,
+    kind: row.kind === "episode" ? "episode" : "movie",
+    tmdbId: row.tmdbId,
+    imdbId: row.imdbId,
+    tvdbId: row.tvdbId,
+    showTmdbId: row.showTmdbId,
+    seasonNumber: row.seasonNumber,
+    episodeNumber: row.episodeNumber,
+    watchedAt: row.watchedAt,
+  };
 }

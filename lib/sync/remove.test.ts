@@ -11,11 +11,7 @@ import {
   upsertWatchEvent,
 } from "../ingest/persist";
 import { WATCHLOG_POSTED } from "./posted";
-import {
-  listWatchlogPosted,
-  removeOnePlay,
-  watchlogPostedCount,
-} from "./remove";
+import { removeOnePlay } from "./remove";
 
 const ctx = vi.hoisted(() => ({
   sqlite: null as InstanceType<typeof Database> | null,
@@ -163,35 +159,6 @@ function recordFor(eventId: string) {
       .get() ?? null
   );
 }
-
-describe("Watchlog-posted undo set", () => {
-  beforeEach(() => {
-    ctx.connected = true;
-    ctx.removes = [];
-    ctx.nextRemove = null;
-    ctx.sqlite?.exec("delete from sync_records");
-    ctx.sqlite?.exec("delete from watch_events");
-    ctx.sqlite?.exec("delete from media_genres");
-    ctx.sqlite?.exec("delete from media_items");
-  });
-
-  it("counts only plays Watchlog posted, not ones already on Trakt", () => {
-    seedPlay({
-      key: "posted",
-      status: "synced",
-      skipReason: WATCHLOG_POSTED,
-      remoteId: "11",
-    });
-    seedPlay({
-      key: "already",
-      status: "synced",
-      skipReason: "already_on_trakt",
-      remoteId: "22",
-    });
-    expect(watchlogPostedCount()).toBe(1);
-    expect(listWatchlogPosted().map((row) => row.remoteId)).toEqual([11]);
-  });
-});
 
 describe("removeOnePlay", () => {
   beforeEach(() => {

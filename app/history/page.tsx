@@ -59,7 +59,7 @@ export default async function HistoryPage({
           <div className="px-4 py-16 md:px-8">
             <p className="text-ui text-fg-muted">
               {total === 0
-                ? "No watched plays yet. Run ingest to pull history from tofa."
+                ? "No watched plays yet. Import from Tofa to pull history."
                 : "No plays match these filters."}
             </p>
           </div>

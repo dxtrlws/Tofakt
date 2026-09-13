@@ -5,8 +5,7 @@ import { requireUser } from "@/lib/auth/require";
 import { getConnection } from "@/lib/connections/store";
 import { getIngestSettings } from "@/lib/ingest/run";
 import { lastJobTimes, listTofaLibraries } from "@/lib/sync/actions";
-import { backfillPreview, pendingCount } from "@/lib/sync/preview";
-import { watchlogPostedCount } from "@/lib/sync/remove";
+import { pendingCount } from "@/lib/sync/preview";
 import { getSyncSettings } from "@/lib/sync/settings";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +16,6 @@ export default async function SyncSettingsPage() {
   const trakt = getConnection("trakt");
   const ingest = getIngestSettings();
   const sync = getSyncSettings();
-  const preview = backfillPreview();
   const libraries = await listTofaLibraries();
   const jobs = await lastJobTimes();
   const pending = pendingCount();
@@ -37,8 +35,6 @@ export default async function SyncSettingsPage() {
           libraries={libraries}
           movieThreshold={ingest.movieThreshold}
           pending={pending}
-          postedCount={watchlogPostedCount()}
-          preview={preview}
           reconcileEnabled={sync.reconcileEnabled}
           reconcileEveryMinutes={sync.reconcileEveryMinutes}
           sync={sync}

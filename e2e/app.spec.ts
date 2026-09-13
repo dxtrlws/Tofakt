@@ -75,8 +75,12 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
 
   await test.step("ingest, run sync, open monthly review", async () => {
     await page.goto("/history");
-    await page.getByRole("button", { name: "Run ingest", exact: true }).click();
-    await expect(page.getByRole("button", { name: /Ingesting/ })).toBeVisible();
+    await page
+      .getByRole("button", { name: "Import from Tofa", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: /Importing from Tofa/ }),
+    ).toBeVisible();
     await expect(page.getByText("Inception")).toBeVisible({ timeout: 30_000 });
 
     await page.goto("/settings/sync");

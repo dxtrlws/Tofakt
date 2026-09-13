@@ -22,7 +22,6 @@ const thresholds = { movie: 90, episode: 85 };
 const sync = {
   mode: "manual" as const,
   cutoffIso: null,
-  backfillConfirmedAt: null,
   windowMinutes: 30,
   timestampConvention: "completion" as const,
   excludedLibraryIds: [] as string[],

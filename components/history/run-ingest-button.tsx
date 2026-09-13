@@ -7,7 +7,7 @@ import { runIngestNow } from "@/lib/ingest/actions";
 
 export function RunIngestButton() {
   const [, action, pending] = useToastAction(runIngestNow, {
-    busy: "Ingesting plays…",
+    busy: "Importing from Tofa…",
   });
   return (
     <form
@@ -29,7 +29,7 @@ function IngestHint() {
     <span className="group relative flex">
       <button
         aria-describedby="run-ingest-hint"
-        aria-label="What does Run ingest do?"
+        aria-label="What does Import from Tofa do?"
         className="flex size-9 cursor-help items-center justify-center rounded-md text-fg-muted hover:bg-bg-overlay hover:text-fg"
         type="button"
       >
@@ -74,7 +74,11 @@ function Submit() {
       disabled={pending}
       type="submit"
     >
-      <BusyLabel busy="Ingesting…" idle="Run ingest" pending={pending} />
+      <BusyLabel
+        busy="Importing from Tofa…"
+        idle="Import from Tofa"
+        pending={pending}
+      />
     </button>
   );
 }

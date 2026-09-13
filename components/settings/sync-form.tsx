@@ -7,14 +7,11 @@ import { PrefSelect } from "@/components/settings/pref-select";
 import { BusyLabel } from "@/components/toast/busy-label";
 import { useToastAction } from "@/components/toast/use-toast-action";
 import {
-  confirmBackfill,
   runReconcileNow,
   runSyncNow,
   saveSyncPrefs,
   setSyncMode,
-  undoWatchlogPosts,
 } from "@/lib/sync/actions";
-import type { BackfillPreview } from "@/lib/sync/preview";
 import {
   formatScheduleLabel,
   INGEST_INTERVALS,
@@ -32,8 +29,6 @@ const primary =
   "rounded-md bg-accent px-3.5 py-2 text-ui font-medium leading-[18px] text-fg-on-accent";
 const secondary =
   "rounded-md border border-border bg-bg-overlay px-3.5 py-2 text-ui font-medium leading-[18px] text-fg";
-const danger =
-  "rounded-md border border-sync-failed/40 bg-sync-failed/12 px-3.5 py-2 text-ui font-medium leading-[18px] text-sync-failed";
 
 export function SyncSettingsForm({
   sync,
@@ -43,10 +38,8 @@ export function SyncSettingsForm({
   intervalMinutes,
   reconcileEnabled,
   reconcileEveryMinutes,
-  preview,
   libraries,
   pending,
-  postedCount,
   jobLabel,
   username,
   traktUsername,
@@ -58,16 +51,12 @@ export function SyncSettingsForm({
   intervalMinutes: number;
   reconcileEnabled: boolean;
   reconcileEveryMinutes: number;
-  preview: BackfillPreview;
   libraries: { id: string; name: string; mediaType: string | null }[];
   pending: number;
-  postedCount: number;
   jobLabel: string;
   username: string;
   traktUsername: string | null;
 }) {
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [undoOpen, setUndoOpen] = useState(false);
   const [, modeAction, modePending] = useToastAction(setSyncMode, {
     busy: "Saving mode…",
   });
@@ -78,18 +67,12 @@ export function SyncSettingsForm({
     busy: "Syncing plays…",
   });
   const [, reconAction, reconPending] = useToastAction(runReconcileNow, {
-    busy: "Reconciling…",
-  });
-  const [, backfillAction] = useToastAction(confirmBackfill, {
-    busy: "Queueing plays…",
-  });
-  const [, undoAction] = useToastAction(undoWatchlogPosts, {
-    busy: "Removing Watchlog posts…",
+    busy: "Importing from Trakt…",
   });
   const jobTitle = syncPending
     ? "Syncing"
     : reconPending
-      ? "Reconciling"
+      ? "Importing from Trakt"
       : "Idle";
 
   return (
@@ -125,33 +108,6 @@ export function SyncSettingsForm({
             />
           </form>
         </div>
-        <button
-          className="flex w-full items-start gap-3 rounded-md px-1 py-2 text-left"
-          onClick={() => setPreviewOpen(true)}
-          type="button"
-        >
-          <span
-            className={`mt-1 size-3.5 shrink-0 rounded-full border ${
-              sync.mode === "backfill"
-                ? "border-accent bg-accent"
-                : "border-fg-subtle"
-            }`}
-          />
-          <span>
-            <span className="block text-ui font-medium text-fg">
-              Sync everything
-            </span>
-            <span className="mt-0.5 block text-meta leading-meta text-fg-muted">
-              Queue the full history, including plays Newly watched only held
-              back. Opens a preview before anything is sent to Trakt.
-            </span>
-            <span className="mt-1.5 block text-meta leading-meta text-status-warn">
-              Use with caution. Trakt keeps each play you send, so a watch
-              already on your account can land a second time if reconciliation
-              missed it.
-            </span>
-          </span>
-        </button>
       </section>
 
       <form
@@ -165,24 +121,24 @@ export function SyncSettingsForm({
         </p>
         <PrefRow
           hint="How often Watchlog pulls new plays from tofa. Does not send plays to Trakt."
-          label="Ingest"
+          label="Import from Tofa"
         >
           <ScheduleSelect
             currentMinutes={intervalMinutes}
             enabled={ingestEnabled}
-            label="Ingest schedule"
+            label="Import from Tofa schedule"
             name="ingestSchedule"
             presets={INGEST_INTERVALS}
           />
         </PrefRow>
         <PrefRow
           hint="How often Watchlog downloads Trakt history for reviews and duplicate checks. This does not post plays or change sync status."
-          label="Reconciliation"
+          label="Import from Trakt"
         >
           <ScheduleSelect
             currentMinutes={reconcileEveryMinutes}
             enabled={reconcileEnabled}
-            label="Reconciliation schedule"
+            label="Import from Trakt schedule"
             name="reconcileSchedule"
             presets={RECONCILE_INTERVALS}
           />
@@ -295,15 +251,8 @@ export function SyncSettingsForm({
             <form action={syncAction} aria-busy={syncPending || undefined}>
               <JobButton label="Run sync now" />
             </form>
-            <button
-              className={secondary}
-              onClick={() => setUndoOpen(true)}
-              type="button"
-            >
-              Undo Watchlog posts
-            </button>
             <form action={reconAction} aria-busy={reconPending || undefined}>
-              <JobButton label="Re-run reconciliation" primary />
+              <JobButton label="Import from Trakt" primary />
             </form>
           </div>
         </div>
@@ -313,108 +262,6 @@ export function SyncSettingsForm({
           happens when you run a sync.
         </p>
       </section>
-
-      {previewOpen ? (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-scrim px-4">
-          <div className="w-full max-w-[560px] rounded-lg border border-border bg-bg-raised p-8">
-            <p className="text-label font-semibold uppercase leading-label tracking-label text-accent">
-              Backfill preview
-            </p>
-            <p className="mt-3 font-headline text-title-sm font-bold leading-title-sm">
-              Send {preview.eligible} plays to Trakt
-            </p>
-            <p className="mt-3 text-ui leading-ui text-fg-muted">
-              {`${[
-                `${preview.history} in history`,
-                `${preview.eligible} above threshold`,
-                `${preview.unmatched} unmatched skipped`,
-                `${preview.alreadyOnTrakt} already on Trakt`,
-                preview.earliestAt && preview.latestAt
-                  ? formatRange(preview.earliestAt, preview.latestAt)
-                  : null,
-                preview.estimatedSeconds > 0
-                  ? `about ${preview.estimatedSeconds}s at one request/sec`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}. This does not delete anything on Trakt.`}
-            </p>
-            <p className="mt-2 text-meta leading-meta text-status-warn">
-              Trakt does not replace a matching play. If reconciliation missed
-              one, this queue can create a duplicate. Use with caution.
-            </p>
-            {preview.snapshotCount === 0 ? (
-              <p className="mt-2 text-meta leading-meta text-fg-muted">
-                Re-run reconciliation first so plays already on Trakt are
-                skipped.
-              </p>
-            ) : null}
-            <div className="mt-6 flex gap-2">
-              <button
-                className={secondary}
-                onClick={() => setPreviewOpen(false)}
-                type="button"
-              >
-                Cancel
-              </button>
-              <form action={backfillAction}>
-                <button
-                  className={primary}
-                  onClick={() => setPreviewOpen(false)}
-                  type="submit"
-                >
-                  Queue {preview.eligible} plays
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {undoOpen ? (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-scrim px-4">
-          <div className="w-full max-w-[560px] rounded-lg border border-border bg-bg-raised p-8">
-            <p className="text-label font-semibold uppercase leading-label tracking-label text-accent">
-              Undo Watchlog posts
-            </p>
-            <p className="mt-3 font-headline text-title-sm font-bold leading-title-sm">
-              {postedCount === 0
-                ? "Nothing to remove"
-                : `Remove ${postedCount} plays from Trakt`}
-            </p>
-            <p className="mt-3 text-ui leading-ui text-fg-muted">
-              {postedCount === 0
-                ? "Watchlog has not posted any plays yet. Plays that were already on your Trakt account are never included here."
-                : "Only plays Watchlog sent are removed. Plays that were already on your Trakt account stay put. Each History row can still remove one matched play."}
-            </p>
-            {postedCount > 0 ? (
-              <p className="mt-2 text-meta leading-meta text-status-warn">
-                This deletes those history rows on Trakt. It cannot be undone
-                except by syncing them again.
-              </p>
-            ) : null}
-            <div className="mt-6 flex gap-2">
-              <button
-                className={secondary}
-                onClick={() => setUndoOpen(false)}
-                type="button"
-              >
-                Cancel
-              </button>
-              {postedCount > 0 ? (
-                <form action={undoAction}>
-                  <button
-                    className={danger}
-                    onClick={() => setUndoOpen(false)}
-                    type="submit"
-                  >
-                    Remove {postedCount} plays
-                  </button>
-                </form>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
       <p className="sr-only">{pending} pending</p>
     </div>
   );
@@ -561,15 +408,4 @@ function JobButton({
       <BusyLabel busy="Working…" idle={label} pending={pending} />
     </button>
   );
-}
-
-function formatRange(startIso: string, endIso: string): string {
-  const start = new Date(startIso);
-  const end = new Date(endIso);
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  return `${fmt.format(start)} – ${fmt.format(end)}`;
 }

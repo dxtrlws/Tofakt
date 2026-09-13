@@ -123,15 +123,6 @@ async function runSyncUnlocked(opts?: {
     return stats;
   }
   const settings = getSyncSettings();
-  if (
-    settings.mode === "backfill" &&
-    !settings.backfillConfirmedAt &&
-    !opts?.eventIds
-  ) {
-    stats.error = "Backfill has not been confirmed.";
-    persistStats(stats, started);
-    return stats;
-  }
 
   const targeted = Boolean(opts?.eventIds?.length);
   if (!targeted) {

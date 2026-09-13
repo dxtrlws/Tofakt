@@ -5,13 +5,12 @@ import {
   RECONCILE_INTERVAL_MIN,
 } from "./schedule";
 
-export type SyncMode = "manual" | "forward" | "backfill";
+export type SyncMode = "manual" | "forward";
 export type TimestampConvention = "completion" | "start";
 
 export type SyncSettings = {
   mode: SyncMode;
   cutoffIso: string | null;
-  backfillConfirmedAt: string | null;
   windowMinutes: number;
   timestampConvention: TimestampConvention;
   excludedLibraryIds: string[];
@@ -22,7 +21,6 @@ export type SyncSettings = {
 const DEFAULTS: SyncSettings = {
   mode: "manual",
   cutoffIso: null,
-  backfillConfirmedAt: null,
   windowMinutes: 30,
   timestampConvention: "completion",
   excludedLibraryIds: [],
@@ -31,7 +29,10 @@ const DEFAULTS: SyncSettings = {
 };
 
 export function getSyncSettings(): SyncSettings {
-  const stored = getSettingJson<Partial<SyncSettings>>("sync.settings") ?? {};
+  const stored =
+    getSettingJson<Partial<SyncSettings> & { mode?: string }>(
+      "sync.settings",
+    ) ?? {};
   const windowMinutes = clampMinutes(
     stored.windowMinutes ?? DEFAULTS.windowMinutes,
     1,
@@ -42,18 +43,12 @@ export function getSyncSettings(): SyncSettings {
     RECONCILE_INTERVAL_MIN,
     RECONCILE_INTERVAL_MAX,
   );
-  const mode =
-    stored.mode === "forward" ||
-    stored.mode === "backfill" ||
-    stored.mode === "manual"
-      ? stored.mode
-      : DEFAULTS.mode;
+  const mode = stored.mode === "forward" ? "forward" : DEFAULTS.mode;
   const timestampConvention =
     stored.timestampConvention === "start" ? "start" : "completion";
   return {
     mode,
     cutoffIso: stored.cutoffIso ?? null,
-    backfillConfirmedAt: stored.backfillConfirmedAt ?? null,
     windowMinutes,
     timestampConvention,
     excludedLibraryIds: Array.isArray(stored.excludedLibraryIds)

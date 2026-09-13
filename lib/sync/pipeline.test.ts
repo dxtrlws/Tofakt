@@ -312,4 +312,36 @@ describe("ingest → sync fixtures", () => {
     expect(stats.posted).toBe(1);
     expect(ctx.posts).toHaveLength(1);
   });
+
+  it("syncs only the selected plays", async () => {
+    ingest(["play-inception", "play-silo"]);
+    ctx.nextPost = () => ({
+      status: 200,
+      json: {
+        added: { movies: 1, episodes: 0 },
+        not_found: { movies: [], episodes: [], shows: [] },
+      },
+      headers: {},
+      text: "",
+    });
+    const byTitle = new Map(
+      (ctx.db?.select().from(watchEvents).all() ?? []).map((row) => [
+        row.tofaHistoryId,
+        row.id,
+      ]),
+    );
+    const inceptionId = byTitle.get("play-inception") ?? "";
+    const siloId = byTitle.get("play-silo") ?? "";
+    const stats = await runSync({
+      eventIds: [inceptionId],
+      ignoreCutoff: true,
+      force: true,
+    });
+    expect(stats.posted).toBe(1);
+    expect(ctx.posts).toHaveLength(1);
+    const inception = records().find((row) => row.watchEventId === inceptionId);
+    const silo = records().find((row) => row.watchEventId === siloId);
+    expect(inception?.status).toBe("synced");
+    expect(silo?.status).toBe("pending");
+  });
 });

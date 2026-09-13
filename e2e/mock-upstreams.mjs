@@ -25,6 +25,22 @@ const PLAY = {
   device_name: "E2E",
 };
 
+const arrivalAt = new Date(watchedAt);
+arrivalAt.setUTCDate(3);
+arrivalAt.setUTCHours(4, 0, 0, 0);
+
+const PLAY2 = {
+  id: "e2e-play-2",
+  media_id: "e2e-media-2",
+  title: "Arrival",
+  media_type: "movie",
+  progress_percent: 100,
+  seconds_watched: 6960,
+  started_at: new Date(arrivalAt.getTime() - 6960 * 1000).toISOString(),
+  ended_at: arrivalAt.toISOString(),
+  device_name: "E2E",
+};
+
 const MEDIA = {
   id: "e2e-media-1",
   library_id: "movies",
@@ -37,6 +53,21 @@ const MEDIA = {
   year: 2010,
   genres: ["science-fiction", "action"],
 };
+
+const MEDIA2 = {
+  id: "e2e-media-2",
+  library_id: "movies",
+  media_type: "movie",
+  title: "Arrival",
+  sort_title: "Arrival",
+  runtime_minutes: 116,
+  tmdb_id: 329865,
+  imdb_id: "tt2543164",
+  year: 2016,
+  genres: ["science-fiction", "drama"],
+};
+
+const MEDIA_BY_ID = { [MEDIA.id]: MEDIA, [MEDIA2.id]: MEDIA2 };
 
 const TRAKT_MOVIE = {
   id: 9001,
@@ -140,16 +171,17 @@ const server = http.createServer(async (req, res) => {
     path === "/api/v1/watch/history" ||
     path === "/api/v1/system/watch-history"
   ) {
-    send(res, 200, { items: [PLAY], has_more: false });
+    send(res, 200, { items: [PLAY, PLAY2], has_more: false });
     return;
   }
   if (path === "/api/v1/media/batch" && method === "POST") {
     await readBody(req);
-    send(res, 200, [MEDIA]);
+    send(res, 200, [MEDIA, MEDIA2]);
     return;
   }
   if (path.startsWith("/api/v1/media/")) {
-    send(res, 200, MEDIA);
+    const id = path.slice("/api/v1/media/".length);
+    send(res, 200, MEDIA_BY_ID[id] ?? MEDIA);
     return;
   }
 
@@ -201,9 +233,11 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (path === "/sync/history" && method === "POST") {
-    await readBody(req);
+    const body = await readBody(req);
+    const movies = Array.isArray(body.movies) ? body.movies.length : 0;
+    const episodes = Array.isArray(body.episodes) ? body.episodes.length : 0;
     send(res, 200, {
-      added: { movies: 1, episodes: 0 },
+      added: { movies, episodes },
       not_found: { movies: [], episodes: [], shows: [] },
     });
     return;

@@ -1,6 +1,5 @@
-import { HistoryDayHeader } from "@/components/history/columns";
 import { HistoryFilters } from "@/components/history/filters";
-import { HistoryRowView } from "@/components/history/row";
+import { HistoryLedger } from "@/components/history/ledger";
 import { RunIngestButton } from "@/components/history/run-ingest-button";
 import { AppShell } from "@/components/layout/app-shell";
 import { ToastSeedHost } from "@/components/toast/seed-host";
@@ -64,17 +63,11 @@ export default async function HistoryPage({
             </p>
           </div>
         ) : (
-          groups.map((group) => (
-            <section
-              className="flex flex-col gap-1 px-4 pt-7 pb-2 last:pb-8 md:px-8"
-              key={group.key}
-            >
-              <HistoryDayHeader label={group.label} />
-              {group.rows.map((row) => (
-                <HistoryRowView key={row.eventId} row={row} timeZone={tz} />
-              ))}
-            </section>
-          ))
+          <HistoryLedger
+            groups={groups}
+            key={`${query.kind}:${query.state}:${query.q}`}
+            timeZone={tz}
+          />
         )}
       </main>
     </AppShell>

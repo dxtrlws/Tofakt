@@ -82,6 +82,25 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
       page.getByRole("button", { name: /Importing from Tofa/ }),
     ).toBeVisible();
     await expect(page.getByText("Inception")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Arrival")).toBeVisible();
+
+    await expect(
+      page.getByRole("button", { name: "Sync to Trakt" }),
+    ).toHaveCount(0);
+    await page.getByRole("checkbox", { name: "Select Inception" }).check();
+    await expect(
+      page.getByRole("button", { name: "Sync to Trakt" }),
+    ).toBeVisible();
+    await page.getByRole("checkbox", { name: "Select all" }).check();
+    await expect(page.getByText("2 selected")).toBeVisible();
+    await page.getByRole("button", { name: "Sync to Trakt" }).click();
+    await expect(page.getByRole("button", { name: /Syncing / })).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Notifications" })
+        .first()
+        .getByText(/Synced /),
+    ).toBeVisible({ timeout: 30_000 });
 
     await page.goto("/settings/sync");
     await page.getByRole("button", { name: "Run sync now" }).click();

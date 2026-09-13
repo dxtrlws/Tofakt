@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { writeAudit } from "../audit/audit";
 import { assertSameOrigin } from "../auth/csrf";
@@ -14,6 +14,7 @@ import { restartScheduler } from "../scheduler";
 import type { ActionFlash } from "../toast/flash";
 import { reply } from "../toast/persist";
 import { tofaLibraries } from "../tofa/client";
+import { parseSyncEventIds } from "./event-ids";
 import { applyForwardCutoff, clearBeforeCutoff } from "./preview";
 import { pullTraktHistory } from "./reconcile";
 import { removeOnePlay } from "./remove";
@@ -189,20 +190,44 @@ export async function runReconcileNow(
 export async function syncWatchEvent(
   formData: FormData,
 ): Promise<SyncActionState> {
+  return syncSelectedPlays(formData);
+}
+
+async function syncSelectedPlays(form: FormData): Promise<SyncActionState> {
   const blocked = await guard();
   if (blocked) {
     return reply(blocked);
   }
-  const eventId = String(formData.get("eventId") ?? "");
-  if (!eventId) {
-    return reply({ error: "Missing play." });
+  const eventIds = parseSyncEventIds(form);
+  if (eventIds.length === 0) {
+    return reply({ error: "Select at least one play." });
   }
+  resetFailedRecords(eventIds);
   const stats = await runSync({
-    eventIds: [eventId],
+    eventIds,
     ignoreCutoff: true,
     force: true,
   });
-  return reply(syncJobFlash(stats, true), refresh);
+  return reply(syncJobFlash(stats, eventIds.length === 1), refresh);
+}
+
+function resetFailedRecords(eventIds: string[]) {
+  getDb()
+    .update(syncRecords)
+    .set({
+      status: "pending",
+      attempts: 0,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      nextAttemptAt: null,
+    })
+    .where(
+      and(
+        inArray(syncRecords.watchEventId, eventIds),
+        eq(syncRecords.status, "failed"),
+      ),
+    )
+    .run();
 }
 
 export async function removeWatchEvent(

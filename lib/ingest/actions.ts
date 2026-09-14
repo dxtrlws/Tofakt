@@ -35,8 +35,13 @@ export async function runIngestNow(
   if (stats.error) {
     return reply({ error: stats.error });
   }
+  const stored = `Ingested ${stats.inserted} new plays (${stats.updated} already stored).`;
+  if (stats.alreadyOnTrakt <= 0) {
+    return reply({ info: stored });
+  }
+  const matched = stats.alreadyOnTrakt === 1 ? "play" : "plays";
   return reply({
-    info: `Ingested ${stats.inserted} new plays (${stats.updated} already stored).`,
+    info: `${stored} Marked ${stats.alreadyOnTrakt} pending ${matched} as already on Trakt.`,
   });
 }
 

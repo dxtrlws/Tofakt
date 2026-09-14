@@ -12,6 +12,7 @@ import { jobRuns, jobs, mediaItems } from "../db/schema";
 import { env } from "../env";
 import { newId } from "../ids";
 import { logger } from "../logger";
+import { matchPendingAgainstSnapshot } from "../sync/reconcile";
 import { getSyncSettings } from "../sync/settings";
 import { tmdbWatchProviders } from "../tmdb/client";
 import { tofaUsersMe } from "../tofa/client";
@@ -50,6 +51,7 @@ export type IngestStats = {
   updated: number;
   hydrated: number;
   enriched: number;
+  alreadyOnTrakt: number;
   stoppedReason: string;
   error?: string;
 };
@@ -119,6 +121,7 @@ async function runIngestUnlocked(): Promise<IngestStats> {
     updated: 0,
     hydrated: 0,
     enriched: 0,
+    alreadyOnTrakt: 0,
     stoppedReason: "done",
   };
   try {
@@ -180,6 +183,7 @@ async function runIngestUnlocked(): Promise<IngestStats> {
     }
 
     stats.enriched = await enrichProviders();
+    stats.alreadyOnTrakt = matchPendingAgainstSnapshot();
     finishJob(runId, "ok", stats, started);
     setSettingJson("ingest.last_stats", stats);
     logger.info({ stats }, "Ingest finished");

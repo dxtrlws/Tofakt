@@ -171,14 +171,13 @@ describe("ingest → sync fixtures", () => {
     expect(records().every((row) => row.status === "pending")).toBe(true);
   });
 
-  it("keeps pending plays pending after a reconciliation-style snapshot refresh", async () => {
+  it("does not mark or post pending plays on idle runSync", async () => {
     ingest(["play-inception"]);
     saveSyncSettings({
       mode: "forward",
       cutoffIso: "2020-01-01T00:00:00.000Z",
     });
-    // pullTraktHistory is mocked; calling runSync without force must not mark
-    // or post — status changes wait for an explicit sync.
+    // pullTraktHistory is mocked; idle runSync still must not POST.
     const idle = await runSync();
     expect(idle.synced).toBe(0);
     expect(idle.alreadyOnTrakt).toBe(0);

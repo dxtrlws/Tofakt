@@ -132,7 +132,7 @@ export function SyncSettingsForm({
           />
         </PrefRow>
         <PrefRow
-          hint="How often Watchlog downloads Trakt history for reviews and duplicate checks. This does not post plays or change sync status."
+          hint="How often Watchlog downloads Trakt history for reviews and duplicate checks. Matching pending plays are marked already on Trakt. This does not post plays."
           label="Import from Trakt"
         >
           <ScheduleSelect
@@ -258,8 +258,8 @@ export function SyncSettingsForm({
         </div>
         <p className="text-meta leading-meta text-fg-muted">
           Downloads your Trakt watch history for reviews and duplicate checks.
-          This does not add, remove, or mark local plays as synced. Matching
-          happens when you run a sync.
+          Matching pending plays are marked already on Trakt. This does not add,
+          remove, or post local plays.
         </p>
       </section>
       <p className="sr-only">{pending} pending</p>

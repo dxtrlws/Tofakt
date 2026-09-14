@@ -136,9 +136,11 @@ async function runSyncUnlocked(opts?: {
         persistStats(stats, started);
         return stats;
       }
+      stats.alreadyOnTrakt += pulled.matched;
+      stats.synced += pulled.matched;
     }
     const matched = markAlreadyOnTrakt(listSnapshots().map(toSnapshotPlay));
-    stats.alreadyOnTrakt = matched;
+    stats.alreadyOnTrakt += matched;
     stats.synced += matched;
   }
   let snapshots = listSnapshots();

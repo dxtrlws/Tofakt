@@ -63,7 +63,8 @@ async function tick(): Promise<void> {
       lastFinishedAt: lastJobFinishedAt("ingest"),
     });
     if (ingestDue) {
-      // Ingest never posts. Pending plays wait for Run sync now or Sync now.
+      // Ingest never posts. Matching pending plays as already_on_trakt uses
+      // the existing Trakt snapshot; leftover pending waits for Run sync now.
       await runIngest();
     }
 
@@ -81,7 +82,11 @@ async function tick(): Promise<void> {
         action: pulled.error ? "sync.reconcile_failed" : "sync.reconcile",
         subjectType: "job",
         subjectId: "reconcile",
-        detail: { count: pulled.count, error: pulled.error },
+        detail: {
+          count: pulled.count,
+          matched: pulled.matched,
+          error: pulled.error,
+        },
       });
     }
   } catch (err) {

@@ -174,14 +174,20 @@ export async function runReconcileNow(
   writeAudit({
     action: "sync.reconcile",
     subjectType: "trakt",
-    detail: { count: pulled.count, error: pulled.error },
+    detail: {
+      count: pulled.count,
+      matched: pulled.matched,
+      error: pulled.error,
+    },
   });
   if (pulled.error) {
     return reply({ error: pulled.error }, refresh);
   }
+  const plays = pulled.count === 1 ? "play" : "plays";
+  const pending = pulled.matched === 1 ? "play" : "plays";
   return reply(
     {
-      info: `Loaded ${pulled.count} plays from Trakt history. Pending plays stay pending until you run a sync.`,
+      info: `Loaded ${pulled.count} ${plays} from Trakt history. Marked ${pulled.matched} pending ${pending} as already on Trakt.`,
     },
     refresh,
   );

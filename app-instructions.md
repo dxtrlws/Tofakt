@@ -4,11 +4,17 @@ A self-hosted web app that watches your **tofa** media server, records everythin
 
 This document is the single source of truth for an AI coding agent working on the app. Read it end to end before changing code. Agents should cite **`app-instructions.md`**, not `README.md`.
 
-Package version: **0.3.1**. Image: `ghcr.io/dxtrlws/watchlog`.
+Package version: **0.3.2**. Image: `ghcr.io/dxtrlws/watchlog`.
 
 ---
 
 ## Changelog
+
+### 0.3.2 — 2026-09-14
+
+**Fixed**
+
+- Import from Trakt and Import from Tofa mark matching pending/failed plays as already on Trakt instead of leaving them pending.
 
 ### 0.3.1 — 2026-09-13
 
@@ -165,8 +171,8 @@ A single Node process serving both the UI and the API, plus an in-process backgr
 │                                                            │
 │   Scheduler (in-process, 15s tick)                         │
 │   ├── ingest job     → tofa watch history (+ TMDB enrich)  │
-│   └── reconcile job  → Trakt history snapshot (no status)  │
-│   (no automatic sync job — pending waits for user action)  │
+│   └── reconcile job  → Trakt snapshot + already_on_trakt   │
+│   (no automatic sync job — POSTs wait for user action)     │
 │                                                            │
 │   SQLite (WAL) at /data/watchlog.db                        │
 │   Encrypted secrets at rest                                │
@@ -379,6 +385,7 @@ Scheduled when enabled (default **every 5 minutes**, range 1–60; `ingestEnable
 4. Hydrate unknown media via tofa batch/detail; enrich TMDB watch-providers in the **same ingest pass** (no separate enrich job).
 5. Create / update `sync_record` per eligibility (§6.3).
 6. Advance watermark only after the page commits.
+7. After the pass, match pending/failed rows against `trakt_history_snapshot` and mark hits `already_on_trakt`. Empty snapshots are a no-op.
 
 Full backfill of local history uses the same ingest path with an unset watermark.
 
@@ -402,7 +409,7 @@ Thresholds are configurable. Duration fallbacks follow discovery rules when comp
 Three layers, all required:
 
 1. **Local ledger.** One `sync_record` per watch event with a unique constraint. A `synced` event is never sent again.
-2. **Pre-flight reconciliation.** Pull Trakt history into `trakt_history_snapshot` (scheduled when enabled, default off / every 60 minutes; also on demand). Match on `(external_id, watched_at within ±N minutes)`, default N = 30. Snapshot pulls alone do **not** change local sync status — matching pending/failed rows to `already_on_trakt` happens during user-initiated sync (`Run sync now` / Sync now).
+2. **Pre-flight reconciliation.** Pull Trakt history into `trakt_history_snapshot` (scheduled when enabled, default off / every 60 minutes; also on demand via Import from Trakt). Match on `(external_id, watched_at within ±N minutes)`, default N = 30. After a snapshot refresh — and after Import from Tofa against an existing snapshot — matching pending/failed rows are marked `synced` with `already_on_trakt`. Sync (`Run sync now` / Sync now) still runs the same match as a pre-POST safety net; only sync POSTs leftovers.
 3. **Post-write confirmation.** Items `added` → `synced`; `not_found` → `unmatched`; unaccounted stay `pending`.
 
 ### 6.5 Timestamp semantics
@@ -421,7 +428,7 @@ Default mode: **`manual`**.
 - **Sync newly watched only (`forward`).** Sets `cutoff = now` at activation. Older events get `before_cutoff` with a path to sync anyway via Sync now.
 - **Sync everything (`backfill`).** Requires reconciliation + preview (counts, date range, estimate) + explicit confirm. Resumable via the sync runner.
 
-There is **no background job that POSTs plays**. The scheduler comment in [`lib/scheduler.ts`](lib/scheduler.ts) is authoritative: pending plays wait for user-initiated sync.
+There is **no background job that POSTs plays**. The scheduler comment in [`lib/scheduler.ts`](lib/scheduler.ts) is authoritative: leftover pending plays wait for user-initiated sync. Import/reconcile jobs may mark matching rows `already_on_trakt` without posting.
 
 Switching from forward-only to backfill clears `before_cutoff` skips and requeues them (via reclassify).
 

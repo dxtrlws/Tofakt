@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { HomeAttention } from "@/lib/home/query";
+import { artworkSrc } from "@/lib/media/artwork-src";
 
 export function AttentionCard({ items }: { items: HomeAttention[] }) {
   if (items.length === 0) {
@@ -24,7 +25,7 @@ export function AttentionCard({ items }: { items: HomeAttention[] }) {
               alt=""
               className="h-14 w-10 shrink-0 rounded-sm object-cover bg-accent-dim"
               height={56}
-              src={`${item.artworkUrl}?w=80&h=112`}
+              src={artworkSrc(item.artworkUrl, 80, 112)}
               width={40}
             />
           ) : (

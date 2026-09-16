@@ -1,9 +1,24 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { tmdbTitleCache } from "../db/schema";
+import { logger } from "../logger";
 import { tmdbDetails } from "./client";
 
 const TTL_MS = 24 * 60 * 60 * 1000;
+/**
+ * How long a *failed* lookup is remembered. Short on purpose: a rate limit or a
+ * timeout is not evidence that a title has no artwork, so it must not sit in
+ * the cache for a full day and blank the poster until the process restarts.
+ */
+const FAILURE_TTL_MS = 30 * 1000;
+
+/**
+ * How many TMDB lookups may be in flight at once.
+ *
+ * A year of history can hold 800 distinct titles. Fetching them all at once
+ * exceeds TMDB's rate limit and blanks a random subset of the artwork.
+ */
+export const TMDB_LOOKUP_CONCURRENCY = 8;
 
 export type TmdbNamedOrg = {
   name: string;
@@ -22,6 +37,10 @@ export type TmdbTitleMeta = {
 type CachedArt = TmdbTitleMeta & { at: number };
 
 const cache = new Map<string, CachedArt>();
+/** cacheKey -> time of the last failed lookup. */
+const failures = new Map<string, number>();
+/** cacheKey -> in-flight lookup, so one render never fetches a title twice. */
+const inFlight = new Map<string, Promise<CachedArt>>();
 
 export function tmdbImageUrl(
   path: string | null | undefined,
@@ -102,6 +121,29 @@ async function tmdbArt(
     cache.set(cacheKey, stored);
     return copyArt(stored);
   }
+  const failedAt = failures.get(cacheKey);
+  if (failedAt != null && Date.now() - failedAt < FAILURE_TTL_MS) {
+    return emptyMeta();
+  }
+  const pending = inFlight.get(cacheKey);
+  if (pending) {
+    return copyArt(await pending);
+  }
+  const lookup = fetchArt(key, cacheKey, kind, tmdbId);
+  inFlight.set(cacheKey, lookup);
+  try {
+    return copyArt(await lookup);
+  } finally {
+    inFlight.delete(cacheKey);
+  }
+}
+
+async function fetchArt(
+  key: string,
+  cacheKey: string,
+  kind: "movie" | "tv",
+  tmdbId: number,
+): Promise<CachedArt> {
   try {
     const details = await tmdbDetails(key, kind, tmdbId);
     const networkOrgs = namedOrgs(details.networks);
@@ -115,13 +157,16 @@ async function tmdbArt(
       companyOrgs,
       at: Date.now(),
     };
+    failures.delete(cacheKey);
     cache.set(cacheKey, entry);
     writeStoredArt(kind, tmdbId, entry);
-    return copyArt(entry);
-  } catch {
-    const entry = emptyMeta();
-    cache.set(cacheKey, entry);
     return entry;
+  } catch (err) {
+    // A failure is not an answer, so it is never written to the durable cache
+    // and only held off for FAILURE_TTL_MS.
+    failures.set(cacheKey, Date.now());
+    logger.warn({ err, kind, tmdbId }, "tmdb title lookup failed");
+    return emptyMeta();
   }
 }
 

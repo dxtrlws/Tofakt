@@ -1,19 +1,29 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import {
+  MomentPending,
+  PosterRailPending,
+  RankedListPending,
+} from "@/components/layout/pending";
 import { MonthActivity } from "@/components/monthly/activity";
 import { MonthBreakdowns } from "@/components/monthly/breakdowns";
 import { MonthChrome } from "@/components/monthly/chrome";
 import { MonthEmpty } from "@/components/monthly/empty";
-import { MonthMomentCard } from "@/components/monthly/first-play";
 import { MonthGenreWatch } from "@/components/monthly/genres";
-import { MonthPosters } from "@/components/monthly/posters";
-import { MonthTopFive } from "@/components/monthly/ranked";
 import { MonthRatings } from "@/components/monthly/ratings";
 import { MonthStats } from "@/components/monthly/stats";
+import {
+  MonthClosingMoment,
+  MonthOpeningMoment,
+  MonthPosterRail,
+  MonthTopMovies,
+  MonthTopShows,
+} from "@/components/monthly/streamed";
 import { ToastSeedHost } from "@/components/toast/seed-host";
 import { requireUser } from "@/lib/auth/require";
 import { timezone } from "@/lib/ingest/run";
-import { loadMonthReview } from "@/lib/stats/month";
-import { parseMonthParam } from "@/lib/stats/period";
+import { loadMonthShell } from "@/lib/stats/month";
+import { monthKey, parseMonthParam } from "@/lib/stats/period";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +32,12 @@ export default async function MonthlyPage({
 }: PageProps<"/monthly">) {
   const user = await requireUser();
   const params = await searchParams;
-  const month = parseMonthParam(params.month, new Date(), timezone());
-  const review = await loadMonthReview(month);
+  const now = new Date();
+  const month = parseMonthParam(params.month, now, timezone());
+  // The shell reads only local SQLite, so the page paints before any TMDB
+  // lookup starts. Artwork streams into the boundaries below.
+  const review = await loadMonthShell(month, now);
+  const art = { monthKey: monthKey(month), nowMs: now.getTime() };
 
   return (
     <AppShell current="monthly" username={user.username}>
@@ -44,20 +58,31 @@ export default async function MonthlyPage({
               </div>
               {review.first ? (
                 <div className="order-1 md:order-none">
-                  <MonthMomentCard
-                    accent
-                    label="How the month opened"
-                    moment={review.first}
-                  />
+                  <Suspense
+                    fallback={<MomentPending label="How the month opened" />}
+                  >
+                    <MonthOpeningMoment {...art} />
+                  </Suspense>
                 </div>
               ) : null}
             </div>
-            <MonthPosters name={review.name} posters={review.posters} />
+            {review.posters.length > 0 ? (
+              <Suspense
+                fallback={
+                  <PosterRailPending heading={`Watched in ${review.name}`} />
+                }
+              >
+                <MonthPosterRail {...art} />
+              </Suspense>
+            ) : null}
             <MonthBreakdowns services={review.services} />
-            <MonthTopFive
-              items={review.topShows}
-              label="Most watched TV show"
-            />
+            {review.topShows.length > 0 ? (
+              <Suspense
+                fallback={<RankedListPending label="Most watched TV show" />}
+              >
+                <MonthTopShows {...art} />
+              </Suspense>
+            ) : null}
             <MonthGenreWatch
               items={review.tvGenres}
               title={"Most Watched\nShow Genres"}
@@ -65,7 +90,13 @@ export default async function MonthlyPage({
               watch={review.tvGenreWatch}
               watermark="show genres"
             />
-            <MonthTopFive items={review.topMovies} label="Most watched movie" />
+            {review.topMovies.length > 0 ? (
+              <Suspense
+                fallback={<RankedListPending label="Most watched movie" />}
+              >
+                <MonthTopMovies {...art} />
+              </Suspense>
+            ) : null}
             <MonthGenreWatch
               items={review.movieGenres}
               title={"Most Watched\nMovie Genres"}
@@ -76,7 +107,9 @@ export default async function MonthlyPage({
             <MonthActivity review={review} />
             <MonthRatings review={review} />
             {review.last ? (
-              <MonthMomentCard label="Last play" moment={review.last} />
+              <Suspense fallback={<MomentPending label="Last play" />}>
+                <MonthClosingMoment {...art} />
+              </Suspense>
             ) : null}
           </>
         )}

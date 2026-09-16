@@ -1,4 +1,5 @@
 import { and, desc, gte, inArray, lt, or } from "drizzle-orm";
+import { cache } from "react";
 import { getConnection, readAccessToken } from "../connections/store";
 import { getDb } from "../db";
 import { mediaItems, providerSnapshots, ratings } from "../db/schema";
@@ -25,6 +26,7 @@ import {
   monthBounds,
   monthKey,
   monthName,
+  parseMonthParam,
   shiftMonth,
   weekdayInZone,
 } from "./period";
@@ -131,43 +133,96 @@ export type MonthBundle = {
   rows: MonthPlay[];
 };
 
+type MonthBase = {
+  id: MonthId;
+  timeZone: string;
+  plays: MonthPlay[];
+  prevCount: number;
+  connected: boolean;
+};
+
+/**
+ * Everything a month needs that lives in SQLite: the Trakt snapshot rows and
+ * the local media links. No TMDB calls, so this resolves in milliseconds and
+ * can render the page shell while artwork is still in flight.
+ *
+ * `cache` keeps the shell and the artwork pass of one request on a single read.
+ */
+const monthBase = cache(
+  async (key: string, nowMs: number): Promise<MonthBase> => {
+    const timeZone = timezone();
+    const id = parseMonthParam(key, new Date(nowMs), timeZone);
+    const { start, end } = monthBounds(id, timeZone);
+    const prevBounds = monthBounds(shiftMonth(id, -1), timeZone);
+    const fetched = await loadTraktPlays(
+      start,
+      end,
+      prevBounds.start,
+      prevBounds.end,
+    );
+    return {
+      id,
+      timeZone,
+      plays: attachLocalMedia(playsFromTraktItems(fetched.items)),
+      prevCount: fetched.prevCount,
+      connected: fetched.connected,
+    };
+  },
+);
+
+function reviewFromBase(
+  base: MonthBase,
+  plays: MonthPlay[],
+  now: Date,
+): MonthReview {
+  const { id, timeZone } = base;
+  const { start, end } = monthBounds(id, timeZone);
+  return monthReviewFromPlays({
+    id,
+    now,
+    timeZone,
+    plays,
+    prevPlays: base.prevCount,
+    years: listYears(timeZone, now, id.year),
+    ratings: listRatings(start, end),
+    traktConnected: base.connected,
+  });
+}
+
+/** The month without artwork — stats, activity, genres, ratings, rankings. */
+export async function loadMonthShell(
+  id: MonthId,
+  now = new Date(),
+): Promise<MonthReview> {
+  const base = await monthBase(monthKey(id), now.getTime());
+  return reviewFromBase(base, base.plays, now);
+}
+
+/** The month with TMDB posters and backdrops resolved. */
+export const loadMonthArt = cache(
+  async (key: string, nowMs: number): Promise<MonthReview> => {
+    const now = new Date(nowMs);
+    const base = await monthBase(key, nowMs);
+    const plays = await withArtwork(base.plays);
+    return withMomentBackdrops(reviewFromBase(base, plays, now), plays);
+  },
+);
+
 export async function loadMonthReview(
   id: MonthId,
   now = new Date(),
 ): Promise<MonthReview> {
-  const { review } = await loadMonthBundle(id, now);
-  return review;
+  return loadMonthArt(monthKey(id), now.getTime());
 }
 
 export async function loadMonthBundle(
   id: MonthId,
   now = new Date(),
 ): Promise<MonthBundle> {
-  const timeZone = timezone();
-  const { start, end } = monthBounds(id, timeZone);
-  const prev = shiftMonth(id, -1);
-  const prevBounds = monthBounds(prev, timeZone);
-  const years = listYears(timeZone, now, id.year);
-  const fetched = await loadTraktPlays(
-    start,
-    end,
-    prevBounds.start,
-    prevBounds.end,
-  );
-  const plays = attachLocalMedia(
-    await withArtwork(playsFromTraktItems(fetched.items)),
-  );
+  const base = await monthBase(monthKey(id), now.getTime());
+  const plays = await withArtwork(base.plays);
   const review = await withMomentBackdrops(
-    monthReviewFromPlays({
-      id,
-      now,
-      timeZone,
-      plays,
-      prevPlays: fetched.prevCount,
-      years,
-      ratings: listRatings(start, end),
-      traktConnected: fetched.connected,
-    }),
+    reviewFromBase(base, plays, now),
     plays,
   );
   return { review, rows: plays };
@@ -430,15 +485,64 @@ export async function playBackdropUrl(
   return null;
 }
 
-export async function hydrateMonthPlays(
-  items: TraktHistoryItem[],
-): Promise<MonthPlay[]> {
-  return attachLocalMedia(await withArtwork(playsFromTraktItems(items)));
+/** Plays linked to local media but with no TMDB artwork resolved yet. */
+export function baseMonthPlays(items: TraktHistoryItem[]): MonthPlay[] {
+  return attachLocalMedia(playsFromTraktItems(items));
 }
 
-async function withArtwork(plays: MonthPlay[]): Promise<MonthPlay[]> {
+/**
+ * Fills in TMDB artwork for plays produced by {@link baseMonthPlays}.
+ *
+ * `only` narrows the lookup to a set of TMDB ids. A year holds hundreds of
+ * distinct titles but shows artwork for about thirty of them, so the review
+ * pages pass the ids they actually render.
+ */
+export function addPlayArtwork(
+  plays: MonthPlay[],
+  only?: ReadonlySet<number>,
+): Promise<MonthPlay[]> {
+  return withArtwork(plays, only);
+}
+
+/** The title a play is grouped and displayed under. */
+export function displayTitle(play: MonthPlay): string {
+  return play.kind === "movie" ? play.title : (play.showTitle ?? play.title);
+}
+
+/** TMDB ids behind a set of displayed titles. */
+export function tmdbIdsForTitles(
+  titles: Iterable<string | null | undefined>,
+  plays: MonthPlay[],
+): Set<number> {
+  const byTitle = new Map<string, number>();
+  for (const play of plays) {
+    if (play.tmdbId == null) {
+      continue;
+    }
+    const title = displayTitle(play);
+    if (!byTitle.has(title)) {
+      byTitle.set(title, play.tmdbId);
+    }
+  }
+  const out = new Set<number>();
+  for (const title of titles) {
+    const id = title ? byTitle.get(title) : undefined;
+    if (id != null) {
+      out.add(id);
+    }
+  }
+  return out;
+}
+
+async function withArtwork(
+  plays: MonthPlay[],
+  only?: ReadonlySet<number>,
+): Promise<MonthPlay[]> {
   const refs = plays.flatMap((play) => {
     if (!play.artworkKey || play.tmdbId == null) {
+      return [];
+    }
+    if (only && !only.has(play.tmdbId)) {
       return [];
     }
     return [

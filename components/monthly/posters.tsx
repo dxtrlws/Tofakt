@@ -1,4 +1,5 @@
 import { PosterCarousel } from "@/components/home/carousel";
+import { artworkSrc } from "@/lib/media/artwork-src";
 import type { MonthReview } from "@/lib/stats/month";
 
 export function MonthPosters({
@@ -28,7 +29,7 @@ export function MonthPosters({
                 <img
                   alt=""
                   className="absolute inset-0 h-full w-full object-cover"
-                  src={`${poster.artworkUrl}?w=336&h=504`}
+                  src={artworkSrc(poster.artworkUrl, 336, 504)}
                 />
               ) : null}
               <div className="absolute inset-0 bg-gradient-to-t from-bg-base/90 via-bg-base/20 to-transparent" />

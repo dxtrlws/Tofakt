@@ -1,3 +1,4 @@
+import { artworkSrc } from "@/lib/media/artwork-src";
 import type { MonthMoment } from "@/lib/stats/month";
 
 export function MonthMomentCard({
@@ -30,7 +31,7 @@ export function MonthMomentCard({
         <img
           alt=""
           className="absolute inset-0 hidden size-full object-cover md:block"
-          src={mediaSrc(moment.backdropUrl, 1280, 720)}
+          src={artworkSrc(moment.backdropUrl, 1280, 720)}
         />
       ) : (
         <div className="absolute inset-0 hidden bg-bg-raised md:block" />
@@ -53,7 +54,7 @@ export function MonthMomentCard({
             <img
               alt=""
               className="h-full w-full object-cover"
-              src={mediaSrc(
+              src={artworkSrc(
                 moment.artworkUrl,
                 featured ? 296 : 224,
                 featured ? 444 : 336,
@@ -99,11 +100,4 @@ export function MonthMomentCard({
       </div>
     </section>
   );
-}
-
-function mediaSrc(url: string, w: number, h: number): string {
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-  return `${url}${url.includes("?") ? "&" : "?"}w=${String(w)}&h=${String(h)}`;
 }

@@ -171,6 +171,28 @@ body {
   animation: toast-busy-pulse 1.4s var(--ease-default) infinite;
 }
 
+@keyframes skeleton-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* Placeholder block for content that is still loading. */
+.skeleton {
+  background-color: var(--color-bg-raised);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-bg-overlay) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.6s var(--ease-default) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   @keyframes toast-in {
     from {
@@ -187,5 +209,10 @@ body {
 
   .busy-spinner {
     animation: none;
+  }
+
+  .skeleton {
+    animation: none;
+    background-image: none;
   }
 }

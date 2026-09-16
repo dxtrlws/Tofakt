@@ -123,6 +123,20 @@ test("first-run setup, mocked connections, sync, monthly, and mode", async ({
     ).toBeVisible();
   });
 
+  await test.step("year review streams its shell and its artwork", async () => {
+    const year = String(new Date().getFullYear());
+    await page.goto("/year");
+    // The shell renders from local data before any TMDB lookup resolves.
+    await expect(page.getByRole("heading", { name: year })).toBeVisible();
+    // The ranked titles arrive from a Suspense boundary behind it.
+    await expect(
+      page.getByRole("heading", { name: "Top 10 Watched Movies" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Inception" }).first(),
+    ).toBeVisible();
+  });
+
   await test.step("about lists a newer GitHub release", async () => {
     await page.goto("/settings/about");
     await expect(page.getByText("Version", { exact: true })).toBeVisible();

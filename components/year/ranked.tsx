@@ -1,3 +1,4 @@
+import { artworkSrc } from "@/lib/media/artwork-src";
 import type { MonthRanked as RankedTitle } from "@/lib/stats/month";
 
 const TINTS = ["bg-bg-overlay", "bg-bg-overlay-strong", "bg-[#12282E]"];
@@ -51,7 +52,7 @@ function RankedRow({ item, index }: { item: RankedTitle; index: number }) {
         <img
           alt=""
           className="absolute top-0 left-[38%] h-full w-[62%] object-cover"
-          src={mediaSrc(item.backdropUrl, 640, 160)}
+          src={artworkSrc(item.backdropUrl, 640, 160)}
         />
       ) : (
         <div
@@ -68,7 +69,7 @@ function RankedRow({ item, index }: { item: RankedTitle; index: number }) {
           <img
             alt=""
             className="h-full w-full object-cover"
-            src={mediaSrc(item.artworkUrl, 80, 112)}
+            src={artworkSrc(item.artworkUrl, 80, 112)}
           />
         ) : null}
       </div>
@@ -91,11 +92,4 @@ function RankedRow({ item, index }: { item: RankedTitle; index: number }) {
       </p>
     </div>
   );
-}
-
-function mediaSrc(url: string, w: number, h: number): string {
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-  return `${url}${url.includes("?") ? "&" : "?"}w=${String(w)}&h=${String(h)}`;
 }

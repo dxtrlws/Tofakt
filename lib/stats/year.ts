@@ -1,21 +1,28 @@
 import { inArray } from "drizzle-orm";
+import { cache } from "react";
 import { getConnection, readAccessToken } from "../connections/store";
 import { getDb } from "../db";
 import { ratings } from "../db/schema";
 import { logHomeTraktError, traktCreds } from "../home/trakt";
 import { timezone } from "../ingest/run";
+import { mapPool } from "../net/pool";
 import {
   countHistoryItemsInRange,
   listHistoryItemsInRange,
 } from "../sync/reconcile";
-import { tmdbImageUrl, tmdbTitleMeta } from "../tmdb/poster";
+import {
+  TMDB_LOOKUP_CONCURRENCY,
+  tmdbImageUrl,
+  tmdbTitleMeta,
+} from "../tmdb/poster";
 import { ensureHistorySnapshot } from "../trakt/cache";
 import type { TraktHistoryItem } from "../trakt/history";
 import {
+  addPlayArtwork,
+  baseMonthPlays,
   type GenreBar,
   type GenreWatch,
   genreWatchFromPlays,
-  hydrateMonthPlays,
   type MonthBar,
   type MonthMoment,
   type MonthPlay,
@@ -23,6 +30,7 @@ import {
   playBackdropUrl,
   playToMoment,
   serviceBars,
+  tmdbIdsForTitles,
   uniqueGenreBars,
 } from "./month";
 import {
@@ -139,44 +147,141 @@ export type YearBundle = {
   rows: MonthPlay[];
 };
 
+type YearBase = {
+  year: number;
+  timeZone: string;
+  live: boolean;
+  plays: MonthPlay[];
+  prevCount: number;
+  connected: boolean;
+};
+
+/**
+ * The year straight out of SQLite: snapshot rows plus local media links, with
+ * no TMDB round trips. A year holds hundreds of distinct titles, so this is the
+ * only part of the page that can render promptly.
+ */
+const yearBase = cache(
+  async (year: number, nowMs: number): Promise<YearBase> => {
+    const now = new Date(nowMs);
+    const timeZone = timezone();
+    const { start, end } = yearBounds(year, timeZone);
+    const prevBounds = yearBounds(year - 1, timeZone);
+    const fetched = await loadTraktYear(
+      start,
+      end,
+      prevBounds.start,
+      prevBounds.end,
+    );
+    return {
+      year,
+      timeZone,
+      live: year === monthIdAt(now, timeZone).year,
+      plays: baseMonthPlays(fetched.items),
+      prevCount: fetched.prevCount,
+      connected: fetched.connected,
+    };
+  },
+);
+
+function reviewFromBase(
+  base: YearBase,
+  plays: MonthPlay[],
+  now: Date,
+  orgs?: YearOrgs,
+): YearReview {
+  return yearReviewFromPlays({
+    year: base.year,
+    now,
+    timeZone: base.timeZone,
+    live: base.live,
+    plays,
+    prevPlays: base.prevCount,
+    years: listRecentYears(now, base.timeZone, base.year),
+    traktConnected: base.connected,
+    orgs,
+    ratingsByTitle: movieRatingsByTitle(plays),
+  });
+}
+
+/** The year without artwork or TMDB org lookups. */
+const yearShell = cache(
+  async (year: number, nowMs: number): Promise<YearReview> => {
+    const base = await yearBase(year, nowMs);
+    return reviewFromBase(base, base.plays, new Date(nowMs));
+  },
+);
+
+export async function loadYearShell(
+  year: number,
+  now = new Date(),
+): Promise<YearReview> {
+  return yearShell(year, now.getTime());
+}
+
+/** Titles whose artwork the year page actually renders. */
+function displayedTitles(review: YearReview): string[] {
+  return [
+    ...review.topShows.map((item) => item.title),
+    ...review.topMovies.map((item) => item.title),
+    ...(review.busiestDay?.posters ?? []).map((poster) => poster.title),
+    review.first?.title,
+    review.last?.title,
+    review.binge?.title,
+  ].filter((title): title is string => Boolean(title));
+}
+
+/**
+ * The year with artwork for the titles it displays.
+ *
+ * Deliberately separate from {@link loadYearOrgs}: this needs roughly thirty
+ * TMDB lookups and lands in a second or two, while the org pass needs one per
+ * distinct title. Keeping them apart lets the posters paint without waiting on
+ * the networks and studios bars.
+ */
+export const loadYearArt = cache(
+  async (year: number, nowMs: number): Promise<YearReview> => {
+    const now = new Date(nowMs);
+    const base = await yearBase(year, nowMs);
+    const shell = await yearShell(year, nowMs);
+    const plays = await addPlayArtwork(
+      base.plays,
+      tmdbIdsForTitles(displayedTitles(shell), base.plays),
+    );
+    return withYearBackdrops(
+      reviewFromBase(base, plays, now),
+      plays,
+      base.timeZone,
+    );
+  },
+);
+
+/** The year's TMDB networks and studios — one lookup per distinct title. */
+export const loadYearOrgs = cache(
+  async (year: number, nowMs: number): Promise<YearReview> => {
+    const now = new Date(nowMs);
+    const base = await yearBase(year, nowMs);
+    const orgs = await loadTitleOrgs(base.plays);
+    return reviewFromBase(base, base.plays, now, orgs);
+  },
+);
+
 export async function loadYearReview(
   year: number,
   now = new Date(),
 ): Promise<YearReview> {
-  const { review } = await loadYearBundle(year, now);
-  return review;
+  return loadYearArt(year, now.getTime());
 }
 
 export async function loadYearBundle(
   year: number,
   now = new Date(),
 ): Promise<YearBundle> {
-  const timeZone = timezone();
-  const current = monthIdAt(now, timeZone);
-  const live = year === current.year;
-  const { start, end } = yearBounds(year, timeZone);
-  const prevBounds = yearBounds(year - 1, timeZone);
-  const fetched = await loadTraktYear(
-    start,
-    end,
-    prevBounds.start,
-    prevBounds.end,
-  );
-  const plays = await hydrateMonthPlays(fetched.items);
-  const review = yearReviewFromPlays({
-    year,
-    now,
-    timeZone,
-    live,
-    plays,
-    prevPlays: fetched.prevCount,
-    years: listRecentYears(now, timeZone, year),
-    traktConnected: fetched.connected,
-    orgs: await loadTitleOrgs(plays),
-    ratingsByTitle: movieRatingsByTitle(plays),
-  });
+  const base = await yearBase(year, now.getTime());
+  const plays = await addPlayArtwork(base.plays);
+  const review = reviewFromBase(base, plays, now, await loadTitleOrgs(plays));
   return {
-    review: await withYearBackdrops(review, plays, timeZone),
+    review: await withYearBackdrops(review, plays, base.timeZone),
     rows: plays,
   };
 }
@@ -997,7 +1102,7 @@ async function loadTitleOrgs(plays: MonthPlay[]): Promise<YearOrgs> {
     return { networksByTmdb, companiesByTmdb, logoByName };
   }
   const refs = uniqueTmdbRefs(plays);
-  await mapPool(refs, 5, async (ref) => {
+  await mapPool(refs, TMDB_LOOKUP_CONCURRENCY, async (ref) => {
     const meta = await tmdbTitleMeta(key, ref.kind, ref.tmdbId);
     if (ref.kind === "tv") {
       networksByTmdb.set(ref.tmdbId, meta.networks);
@@ -1045,29 +1150,6 @@ function uniqueTmdbRefs(plays: MonthPlay[]): Array<{
     refs.push({ kind, tmdbId: play.tmdbId });
   }
   return refs;
-}
-
-async function mapPool<T>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<void>,
-): Promise<void> {
-  if (items.length === 0) {
-    return;
-  }
-  let index = 0;
-  const worker = async () => {
-    while (index < items.length) {
-      const item = items[index];
-      index += 1;
-      if (item) {
-        await fn(item);
-      }
-    }
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
-  );
 }
 
 function movieRatingsByTitle(plays: MonthPlay[]): Map<string, number> {

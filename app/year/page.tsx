@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { MonthMomentCard } from "@/components/monthly/first-play";
+import {
+  MomentPending,
+  NamedBarsPending,
+  Top10Pending,
+} from "@/components/layout/pending";
 import { MonthGenreWatch } from "@/components/monthly/genres";
 import { ToastSeedHost } from "@/components/toast/seed-host";
 import { YearChrome } from "@/components/year/chrome";
@@ -7,20 +12,32 @@ import { YearEmpty } from "@/components/year/empty";
 import { YearKindStats } from "@/components/year/kind-stats";
 import { YearMonths } from "@/components/year/months";
 import { YearNamedBars } from "@/components/year/named-bars";
-import { YearTop10 } from "@/components/year/ranked";
 import { YearStats } from "@/components/year/stats";
+import {
+  YearBingeMoment,
+  YearFirstMoment,
+  YearLastMoment,
+  YearNetworks,
+  YearStudios,
+  YearTopMoviesSection,
+  YearTopShowsSection,
+} from "@/components/year/streamed";
 import { requireUser } from "@/lib/auth/require";
 import { timezone } from "@/lib/ingest/run";
 import { parseYearParam } from "@/lib/stats/period";
-import { loadYearReview } from "@/lib/stats/year";
+import { loadYearShell } from "@/lib/stats/year";
 
 export const dynamic = "force-dynamic";
 
 export default async function YearPage({ searchParams }: PageProps<"/year">) {
   const user = await requireUser();
   const params = await searchParams;
-  const year = parseYearParam(params.year, new Date(), timezone());
-  const review = await loadYearReview(year);
+  const now = new Date();
+  const year = parseYearParam(params.year, now, timezone());
+  // Stats, months, genres and services all come from local SQLite, so the page
+  // paints immediately. Artwork and the TMDB org bars stream in behind it.
+  const review = await loadYearShell(year, now);
+  const art = { year, nowMs: now.getTime() };
 
   return (
     <AppShell current="year" username={user.username}>
@@ -38,24 +55,23 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
             <YearStats review={review} />
             <YearMonths review={review} />
             {review.first ? (
-              <MonthMomentCard
-                accent
-                label="First play"
-                moment={review.first}
-              />
+              <Suspense fallback={<MomentPending label="First play" />}>
+                <YearFirstMoment {...art} />
+              </Suspense>
             ) : null}
             {review.binge ? (
-              <MonthMomentCard
-                accent
-                label="Longest binge"
-                moment={review.binge}
-              />
+              <Suspense fallback={<MomentPending label="Longest binge" />}>
+                <YearBingeMoment {...art} />
+              </Suspense>
             ) : null}
             <YearKindStats stats={review.tv} />
-            <YearTop10
-              items={review.topShows}
-              title={"Top 10 Watched\nShows"}
-            />
+            {review.topShows.length > 0 ? (
+              <Suspense
+                fallback={<Top10Pending title={"Top 10 Watched\nShows"} />}
+              >
+                <YearTopShowsSection {...art} />
+              </Suspense>
+            ) : null}
             <MonthGenreWatch
               items={review.tvGenres}
               title={"Most Watched\nShow Genres"}
@@ -63,13 +79,18 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
               watch={review.tvGenreWatch}
               watermark="show genres"
             />
-            <YearNamedBars
-              caption="Original networks from TMDB. A show counts once, even if it moved networks mid-run."
-              countLabel="networks"
-              items={review.tvNetworks}
-              title={"TV\nNetworks"}
-              unit="show"
-            />
+            {review.tvPlays > 0 ? (
+              <Suspense
+                fallback={
+                  <NamedBarsPending
+                    countLabel="networks"
+                    title={"TV\nNetworks"}
+                  />
+                }
+              >
+                <YearNetworks {...art} />
+              </Suspense>
+            ) : null}
             <YearNamedBars
               caption="TMDB providers at ingest, US region. Not where these were watched. Flatrate first; shows with no provider sit in Not currently streaming."
               countLabel="services"
@@ -79,10 +100,13 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
               unit="show"
             />
             <YearKindStats stats={review.movies} />
-            <YearTop10
-              items={review.topMovies}
-              title={"Top 10 Watched\nMovies"}
-            />
+            {review.topMovies.length > 0 ? (
+              <Suspense
+                fallback={<Top10Pending title={"Top 10 Watched\nMovies"} />}
+              >
+                <YearTopMoviesSection {...art} />
+              </Suspense>
+            ) : null}
             <MonthGenreWatch
               items={review.movieGenres}
               title={"Most Watched\nMovie Genres"}
@@ -90,13 +114,18 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
               watch={review.movieGenreWatch}
               watermark="movie genres"
             />
-            <YearNamedBars
-              caption="Production studios from TMDB. A film can count under more than one studio."
-              countLabel="studios"
-              items={review.movieStudios}
-              title={"Movie\nStudios"}
-              unit="film"
-            />
+            {review.moviePlays > 0 ? (
+              <Suspense
+                fallback={
+                  <NamedBarsPending
+                    countLabel="studios"
+                    title={"Movie\nStudios"}
+                  />
+                }
+              >
+                <YearStudios {...art} />
+              </Suspense>
+            ) : null}
             <YearNamedBars
               caption="TMDB providers at ingest, US region. Not where these were watched. Flatrate first; films with no provider sit in Not currently streaming."
               countLabel="services"
@@ -106,7 +135,9 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
               unit="movie"
             />
             {review.last ? (
-              <MonthMomentCard label="Last play" moment={review.last} />
+              <Suspense fallback={<MomentPending label="Last play" />}>
+                <YearLastMoment {...art} />
+              </Suspense>
             ) : null}
           </>
         )}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { HomePoster } from "@/lib/home/types";
+import { artworkSrc } from "@/lib/media/artwork-src";
 
 export function PosterCard({ poster }: { poster: HomePoster }) {
   const inner = (
@@ -10,7 +11,7 @@ export function PosterCard({ poster }: { poster: HomePoster }) {
           <img
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
-            src={artworkSrc(poster.artworkUrl)}
+            src={artworkSrc(poster.artworkUrl, 336, 504)}
           />
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-bg-base/90 via-bg-base/20 to-transparent" />
@@ -61,13 +62,6 @@ export function PosterCard({ poster }: { poster: HomePoster }) {
   return (
     <div className="flex w-[168px] shrink-0 flex-col gap-2.5">{inner}</div>
   );
-}
-
-function artworkSrc(url: string): string {
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-  return `${url}${url.includes("?") ? "&" : "?"}w=336&h=504`;
 }
 
 function badgeClass(tone: HomePoster["badgeTone"]): string {

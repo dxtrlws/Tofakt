@@ -12,11 +12,12 @@ import { getDb } from "../db";
 import { mediaItems } from "../db/schema";
 import { formatSeasonEpisode } from "../history/query";
 import { logger } from "../logger";
+import { mapPool } from "../net/pool";
 import {
   listHistoryItemsInRange,
   listRecentHistoryItems,
 } from "../sync/reconcile";
-import { tmdbPosterUrl } from "../tmdb/poster";
+import { TMDB_LOOKUP_CONCURRENCY, tmdbPosterUrl } from "../tmdb/poster";
 import { ensureHistorySnapshot, loadCachedShowCalendar } from "../trakt/cache";
 import type { TraktHistoryItem } from "../trakt/history";
 import type { HomeMonth, HomePoster } from "./types";
@@ -324,14 +325,12 @@ async function resolveArtwork(refs: ArtRef[]): Promise<Map<string, string>> {
   if (!key) {
     return out;
   }
-  await Promise.all(
-    missing.map(async (ref) => {
-      const url = await tmdbPosterUrl(key, ref.kind, ref.tmdbId);
-      if (url) {
-        out.set(ref.key, url);
-      }
-    }),
-  );
+  await mapPool(missing, TMDB_LOOKUP_CONCURRENCY, async (ref) => {
+    const url = await tmdbPosterUrl(key, ref.kind, ref.tmdbId);
+    if (url) {
+      out.set(ref.key, url);
+    }
+  });
   return out;
 }
 

@@ -109,6 +109,33 @@ const AUDIT_LABELS: Record<string, string> = {
   "history.unignore": "Unignored a play",
 };
 
+export function auditToCsv(
+  rows: {
+    at: Date;
+    actor: AuditActor;
+    action: string;
+    detailJson: string | null;
+  }[],
+): string {
+  const header = ["time", "actor", "action", "detail"];
+  const body = rows.map((row) =>
+    [
+      row.at.toISOString(),
+      row.actor,
+      csv(formatAuditLabel(row.action)),
+      csv(formatAuditDetail(row.detailJson)),
+    ].join(","),
+  );
+  return [header.join(","), ...body].join("\n");
+}
+
+function csv(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replaceAll('"', '""')}"`;
+  }
+  return value;
+}
+
 export function listAudit(limit = 40): {
   at: Date;
   actor: AuditActor;

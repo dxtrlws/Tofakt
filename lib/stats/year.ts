@@ -18,6 +18,12 @@ import {
 import { ensureHistorySnapshot } from "../trakt/cache";
 import type { TraktHistoryItem } from "../trakt/history";
 import {
+  buildKindWatchStats,
+  elapsedDaysInRange,
+  type KindWatchStats,
+  yearKindBars,
+} from "./kind";
+import {
   addPlayArtwork,
   baseMonthPlays,
   type GenreBar,
@@ -35,13 +41,11 @@ import {
 } from "./month";
 import {
   formatHours,
-  hourInZone,
   isoDate,
   listRecentYears,
   type MonthId,
   monthIdAt,
   monthName,
-  weekdayInZone,
   yearBounds,
 } from "./period";
 
@@ -56,29 +60,7 @@ export type YearMonthBar = {
   tone: "peak" | "past" | "current" | "empty";
 };
 
-export type YearChartBar = {
-  key: string;
-  label: string;
-  plays: number;
-  seconds: number;
-};
-
-export type YearKindStats = {
-  title: string;
-  badge: string;
-  hoursLabel: string;
-  plays: number;
-  hoursPerMonth: string;
-  hoursPerWeek: string;
-  hoursPerDay: string;
-  playsPerMonth: string;
-  playsPerWeek: string;
-  playsPerDay: string;
-  weeks: YearChartBar[];
-  months: YearChartBar[];
-  weekdays: YearChartBar[];
-  hoursOfDay: YearChartBar[];
-};
+export type YearKindStats = KindWatchStats;
 
 export type YearBusiestDay = {
   dayLabel: string;
@@ -309,7 +291,6 @@ export function yearReviewFromPlays(input: {
   )[0];
   const moviePlays = plays.filter((play) => play.kind === "movie").length;
   const split = newRewatch(plays);
-  const elapsed = elapsedUnits(year, now, timeZone, live);
   const binge = longestBinge(plays, timeZone);
   const busy = busiestDay(plays, timeZone);
   const firstPlay = plays[0];
@@ -402,8 +383,8 @@ export function yearReviewFromPlays(input: {
       NAMED_ORGS,
       input.orgs?.logoByName,
     ),
-    movies: kindStats(plays, "movie", year, timeZone, elapsed),
-    tv: kindStats(plays, "episode", year, timeZone, elapsed),
+    movies: yearKindWatch(plays, "movie", year, timeZone, now, live),
+    tv: yearKindWatch(plays, "episode", year, timeZone, now, live),
     topShows: rankedShows(plays, binge, busy, lastPlay),
     topMovies: rankedMovies(plays, firstPlay, input.ratingsByTitle),
   };
@@ -898,127 +879,25 @@ function dayPosters(plays: MonthPlay[]) {
     }));
 }
 
-function elapsedUnits(
-  year: number,
-  now: Date,
-  timeZone: string,
-  live: boolean,
-): { days: number; weeks: number; months: number } {
-  const { start, end } = yearBounds(year, timeZone);
-  const stop = live ? now : end;
-  const days = Math.max(1, (stop.getTime() - start.getTime()) / 86400000);
-  return { days, weeks: days / 7, months: days / (365.25 / 12) };
-}
-
-function kindStats(
+function yearKindWatch(
   plays: MonthPlay[],
   kind: "movie" | "episode",
   year: number,
   timeZone: string,
-  elapsed: { days: number; weeks: number; months: number },
-): YearKindStats {
+  now: Date,
+  live: boolean,
+): KindWatchStats {
   const subset = plays.filter((play) => play.kind === kind);
-  const seconds = subset.reduce((sum, play) => sum + play.seconds, 0);
-  const unique = new Set(
-    subset.map((play) =>
-      kind === "movie" ? play.title : (play.showTitle ?? play.title),
-    ),
-  );
-  const per = (value: number, denom: number) => {
-    const rounded = Math.round((value / Math.max(1, denom)) * 10) / 10;
-    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
-  };
-  const weeks = Array.from({ length: 53 }, (_, index) => ({
-    key: `w${index + 1}`,
-    label: `Week ${index + 1}`,
-    plays: 0,
-    seconds: 0,
-  }));
-  const months = Array.from({ length: 12 }, (_, index) => ({
-    key: String(index + 1),
-    label: monthName({ year, month: index + 1 }, timeZone),
-    plays: 0,
-    seconds: 0,
-  }));
-  const weekdays = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ].map((label, index) => ({
-    key: String(index),
-    label,
-    plays: 0,
-    seconds: 0,
-  }));
-  const hoursOfDay = Array.from({ length: 24 }, (_, hour) => ({
-    key: String(hour),
-    label: hourClock(hour),
-    plays: 0,
-    seconds: 0,
-  }));
-  for (const play of subset) {
-    const week = weeks[weekIndex(play.watchedAt, year, timeZone)];
-    const month = months[monthIdAt(play.watchedAt, timeZone).month - 1];
-    const weekday = weekdays[weekdayInZone(play.watchedAt, timeZone)];
-    const hour = hoursOfDay[hourInZone(play.watchedAt, timeZone)];
-    if (week) {
-      week.plays += 1;
-      week.seconds += play.seconds;
-    }
-    if (month) {
-      month.plays += 1;
-      month.seconds += play.seconds;
-    }
-    if (weekday) {
-      weekday.plays += 1;
-      weekday.seconds += play.seconds;
-    }
-    if (hour) {
-      hour.plays += 1;
-      hour.seconds += play.seconds;
-    }
-  }
-  const hours = seconds / 3600;
-  return {
-    title: kind === "movie" ? "Movies" : "TV",
-    badge:
-      kind === "movie"
-        ? `${unique.size} ${unique.size === 1 ? "MOVIE" : "MOVIES"}`
-        : `${subset.length} ${subset.length === 1 ? "EPISODE" : "EPISODES"}`,
-    hoursLabel: formatHours(seconds),
-    plays: subset.length,
-    hoursPerMonth: per(hours, elapsed.months),
-    hoursPerWeek: per(hours, elapsed.weeks),
-    hoursPerDay: per(hours, elapsed.days),
-    playsPerMonth: per(subset.length, elapsed.months),
-    playsPerWeek: per(subset.length, elapsed.weeks),
-    playsPerDay: per(subset.length, elapsed.days),
-    weeks,
-    months,
-    weekdays,
-    hoursOfDay,
-  };
-}
-
-function weekIndex(date: Date, year: number, timeZone: string): number {
-  const start = yearBounds(year, timeZone).start;
-  return Math.min(
-    52,
-    Math.max(
-      0,
-      Math.floor((date.getTime() - start.getTime()) / (7 * 86400000)),
-    ),
-  );
-}
-
-function hourClock(hour: number): string {
-  const period = hour < 12 ? "AM" : "PM";
-  const twelve = hour % 12 === 0 ? 12 : hour % 12;
-  return `${twelve} ${period}`;
+  const { start, end } = yearBounds(year, timeZone);
+  return buildKindWatchStats({
+    plays: subset,
+    kind,
+    timeZone,
+    periodName: String(year),
+    elapsedDays: elapsedDaysInRange(start, end, now, live),
+    bars: yearKindBars(subset, year, timeZone),
+    barGranularity: "month",
+  });
 }
 
 function shortDate(date: Date, timeZone: string): string {

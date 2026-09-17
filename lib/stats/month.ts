@@ -18,6 +18,13 @@ import { tmdbBackdropUrl, tmdbImageUrl } from "../tmdb/poster";
 import { ensureHistorySnapshot } from "../trakt/cache";
 import type { TraktHistoryItem } from "../trakt/history";
 import {
+  buildKindWatchStats,
+  emptyKindWatch,
+  type KindWatchStats,
+  monthElapsedDays,
+  monthKindBars,
+} from "./kind";
+import {
   formatDelta,
   formatHours,
   hourInZone,
@@ -118,6 +125,8 @@ export type MonthReview = {
   ratingsBuckets: number[];
   heatmap: boolean[][];
   heatmapHours: number[][];
+  movies: KindWatchStats;
+  tv: KindWatchStats;
 };
 
 export type MonthMoment = {
@@ -299,7 +308,7 @@ export function monthReviewFromPlays(input: {
   const prev = shiftMonth(id, -1);
   const next = shiftMonth(id, 1);
   const name = monthName(id, timeZone);
-  const daysInMonth = new Date(Date.UTC(id.year, id.month, 0)).getUTCDate();
+  const daysInMonthCount = daysInMonth(id);
   const base = {
     id,
     name,
@@ -331,7 +340,7 @@ export function monthReviewFromPlays(input: {
       tvGenres: [],
       movieGenreWatch: emptyGenreWatch(),
       tvGenreWatch: emptyGenreWatch(),
-      daily: Array.from({ length: daysInMonth }, () => 0),
+      daily: Array.from({ length: daysInMonthCount }, () => 0),
       hoursPerActiveDay: "0",
       playsPerActiveDay: "0",
       topShows: [],
@@ -342,6 +351,8 @@ export function monthReviewFromPlays(input: {
       ratingsBuckets: Array.from({ length: 10 }, () => 0),
       heatmap: emptyHeatmap(id, timeZone),
       heatmapHours: emptyHeatmapHours(id, timeZone),
+      movies: emptyKindWatch("movie", name),
+      tv: emptyKindWatch("episode", name),
     };
   }
   const moviePlays = plays.filter((play) => play.kind === "movie").length;
@@ -371,7 +382,7 @@ export function monthReviewFromPlays(input: {
     tvGenres: uniqueGenreBars(plays, "episode"),
     movieGenreWatch: genreWatchFromPlays(plays, "movie"),
     tvGenreWatch: genreWatchFromPlays(plays, "episode"),
-    daily: dailyCounts(plays, timeZone, daysInMonth),
+    daily: dailyCounts(plays, timeZone, daysInMonthCount),
     hoursPerActiveDay: formatHours(seconds / Math.max(1, daySet.size)),
     playsPerActiveDay: (plays.length / Math.max(1, daySet.size)).toFixed(1),
     topShows: rankedShows(plays),
@@ -382,7 +393,32 @@ export function monthReviewFromPlays(input: {
     ratingsBuckets: ratingBuckets(ratingRows),
     heatmap: heatmapFlags(plays, id, timeZone),
     heatmapHours: heatmapHours(plays, id, timeZone),
+    movies: monthKindWatch(plays, "movie", id, name, timeZone, input.now),
+    tv: monthKindWatch(plays, "episode", id, name, timeZone, input.now),
   };
+}
+
+function monthKindWatch(
+  plays: MonthPlay[],
+  kind: "movie" | "episode",
+  id: MonthId,
+  name: string,
+  timeZone: string,
+  now: Date,
+): KindWatchStats {
+  const subset = plays.filter((play) => play.kind === kind);
+  return buildKindWatchStats({
+    plays: subset,
+    kind,
+    timeZone,
+    periodName: name,
+    elapsedDays: monthElapsedDays(id, now, timeZone),
+    bars: monthKindBars(subset, timeZone, daysInMonth(id)),
+  });
+}
+
+function daysInMonth(id: MonthId): number {
+  return new Date(Date.UTC(id.year, id.month, 0)).getUTCDate();
 }
 
 async function loadTraktPlays(

@@ -10,6 +10,7 @@ import { MonthBreakdowns } from "@/components/monthly/breakdowns";
 import { MonthChrome } from "@/components/monthly/chrome";
 import { MonthEmpty } from "@/components/monthly/empty";
 import { MonthGenreWatch } from "@/components/monthly/genres";
+import { KindWatchPanel } from "@/components/monthly/kind-watch";
 import { MonthRatings } from "@/components/monthly/ratings";
 import { MonthStats } from "@/components/monthly/stats";
 import {
@@ -76,6 +77,7 @@ export default async function MonthlyPage({
               </Suspense>
             ) : null}
             <MonthBreakdowns services={review.services} />
+            <KindWatchPanel stats={review.tv} />
             {review.topShows.length > 0 ? (
               <Suspense
                 fallback={<RankedListPending label="Most watched TV show" />}
@@ -90,6 +92,7 @@ export default async function MonthlyPage({
               watch={review.tvGenreWatch}
               watermark="show genres"
             />
+            <KindWatchPanel stats={review.movies} />
             {review.topMovies.length > 0 ? (
               <Suspense
                 fallback={<RankedListPending label="Most watched movie" />}

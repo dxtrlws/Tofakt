@@ -127,6 +127,23 @@ describe("monthReviewFromPlays", () => {
     expect(review.daily[0]).toBe(1);
     expect(review.daily[1]).toBe(2);
     expect(review.heatmapHours.flat().some((hours) => hours > 0)).toBe(true);
+    expect(review.tv.plays).toBe(2);
+    expect(review.tv.headlineCount).toBe(1);
+    expect(review.tv.noun).toBe("TV Show");
+    expect(review.tv.hoursLabel).toBe("2");
+    expect(review.tv.periodName).toBe("September");
+    expect(review.tv.bars).toHaveLength(30);
+    expect(review.tv.bars[0]?.plays).toBe(1);
+    expect(review.tv.bars[1]?.plays).toBe(1);
+    expect(review.tv.mostActiveDay).toEqual({ label: "Sep 1", plays: 1 });
+    expect(review.tv.peakTime).toBe("1:00 AM");
+    expect(review.movies.plays).toBe(1);
+    expect(review.movies.headlineCount).toBe(1);
+    expect(review.movies.noun).toBe("Movie");
+    expect(review.movies.hoursLabel).toBe("1");
+    expect(review.movies.bars[1]?.plays).toBe(1);
+    expect(review.movies.mostActiveDay).toEqual({ label: "Sep 2", plays: 1 });
+    expect(review.movies.peakTime).toBe("4:00 AM");
   });
 });
 

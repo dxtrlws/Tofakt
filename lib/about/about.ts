@@ -1,6 +1,5 @@
 import { statSync } from "node:fs";
 import { desc, eq, isNotNull } from "drizzle-orm";
-import { formatAuditDetail, formatAuditLabel, listAudit } from "../audit/audit";
 import { getConnection, parseExtra } from "../connections/store";
 import { watchEventTotal } from "../data/danger";
 import { getDb, getSqlite, sqlitePath } from "../db";
@@ -186,29 +185,3 @@ export function jobStatusText(): string {
   return jobStatusLines().join("\n");
 }
 
-export function diagnosticText(): string {
-  const tz = timezone();
-  const lines = jobStatusLines();
-  const audit = listAudit(12);
-  if (audit.length > 0) {
-    lines.push("");
-    lines.push("audit");
-    for (const row of audit) {
-      const detail = formatAuditDetail(row.detailJson);
-      lines.push(
-        `${row.actor.padEnd(7)}${formatStamp(row.at, tz)}  ${formatAuditLabel(row.action)}${detail ? `  ${detail}` : ""}`,
-      );
-    }
-  }
-  return lines.join("\n");
-}
-
-export function copyReport(): string {
-  const facts = aboutFacts();
-  return [
-    `Watchlog ${facts.version} (${facts.build})`,
-    `uptime ${facts.uptime} · db ${facts.database} · ${facts.events}`,
-    "",
-    diagnosticText(),
-  ].join("\n");
-}

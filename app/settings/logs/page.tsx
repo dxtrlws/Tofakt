@@ -1,7 +1,7 @@
-import { CopyReport } from "@/components/settings/copy-report";
+import Link from "next/link";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { ToastSeedHost } from "@/components/toast/seed-host";
-import { copyReport, jobStatusText } from "@/lib/about/about";
+import { jobStatusText } from "@/lib/about/about";
 import { formatStamp } from "@/lib/about/about-format";
 import {
   formatAuditDetail,
@@ -18,7 +18,6 @@ export default async function LogsPage() {
   const tz = timezone();
   const rows = listAudit(100);
   const status = jobStatusText();
-  const report = copyReport();
 
   return (
     <>
@@ -26,20 +25,25 @@ export default async function LogsPage() {
       <SettingsTabs current="logs" />
       <div className="flex flex-col gap-4 px-4 pb-12 pt-5 md:px-8">
         <section className="flex flex-col gap-3 rounded-lg border border-border bg-bg-raised p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-label font-semibold uppercase leading-label tracking-label text-fg-muted">
-              Jobs
-            </p>
-            <CopyReport text={report} />
-          </div>
+          <p className="text-label font-semibold uppercase leading-label tracking-label text-fg-muted">
+            Jobs
+          </p>
           <pre className="overflow-x-auto whitespace-pre text-meta leading-meta text-fg-muted">
             {status}
           </pre>
         </section>
         <section className="flex flex-col gap-1 rounded-lg border border-border bg-bg-raised px-5 py-2">
-          <p className="py-[14px] text-label font-semibold uppercase leading-label tracking-label text-fg-muted">
-            Audit
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="py-[14px] text-label font-semibold uppercase leading-label tracking-label text-fg-muted">
+              Audit
+            </p>
+            <Link
+              className="rounded-md border border-border bg-bg-overlay px-3 py-1.5 text-ui font-medium leading-[18px] text-fg"
+              href="/settings/logs/export"
+            >
+              Export CSV
+            </Link>
+          </div>
           {rows.length === 0 ? (
             <p className="pb-4 text-ui leading-[18px] text-fg-muted">
               Nothing recorded yet. Saving preferences, ingest, and sync will

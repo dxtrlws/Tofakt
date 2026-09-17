@@ -35,6 +35,10 @@ describe("yearReviewFromPlays", () => {
     expect(review.empty).toBe(true);
     expect(review.summary).toBe("No Trakt plays in this year");
     expect(review.busiestMonth).toBeNull();
+    expect(review.movies.plays).toBe(0);
+    expect(review.tv.plays).toBe(0);
+    expect(review.movies.barGranularity).toBe("month");
+    expect(review.tv.bars).toHaveLength(12);
   });
 
   it("aggregates Trakt plays into year stats without using tofa", () => {
@@ -101,6 +105,20 @@ describe("yearReviewFromPlays", () => {
     ]);
     expect(review.movies.plays).toBe(1);
     expect(review.tv.plays).toBe(11);
+    expect(review.movies.barGranularity).toBe("month");
+    expect(review.tv.barGranularity).toBe("month");
+    expect(review.tv.bars).toHaveLength(12);
+    expect(review.tv.bars[0]?.label).toBe("Jan");
+    expect(review.tv.bars[0]?.plays).toBe(1);
+    expect(review.tv.bars[7]?.label).toBe("Aug");
+    expect(review.tv.bars[7]?.plays).toBe(9);
+    expect(review.tv.mostActiveDay).toEqual({ label: "Aug 16", plays: 8 });
+    expect(review.tv.peakTime).toBe("12:00 PM");
+    expect(review.tv.hoursPerDay).toMatch(/^\d+(\.\d)?$/);
+    expect(review.movies.hoursPerDay).toMatch(/^\d+(\.\d)?$/);
+    expect(review.movies.mostActiveDay).toEqual({ label: "Aug 20", plays: 1 });
+    expect(review.movies.peakTime).toBe("4:00 PM");
+    expect(review.movies.bars[7]?.plays).toBe(1);
     expect(review.movieGenres[0]?.name).toBe("Horror");
     expect(review.tvGenreWatch.most).toEqual({ name: "Drama", count: 3 });
     expect(review.tvGenreWatch.least).toBeNull();

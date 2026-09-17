@@ -6,10 +6,10 @@ import {
   Top10Pending,
 } from "@/components/layout/pending";
 import { MonthGenreWatch } from "@/components/monthly/genres";
+import { KindWatchPanel } from "@/components/monthly/kind-watch";
 import { ToastSeedHost } from "@/components/toast/seed-host";
 import { YearChrome } from "@/components/year/chrome";
 import { YearEmpty } from "@/components/year/empty";
-import { YearKindStats } from "@/components/year/kind-stats";
 import { YearMonths } from "@/components/year/months";
 import { YearNamedBars } from "@/components/year/named-bars";
 import { YearStats } from "@/components/year/stats";
@@ -64,7 +64,6 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
                 <YearBingeMoment {...art} />
               </Suspense>
             ) : null}
-            <YearKindStats stats={review.tv} />
             {review.topShows.length > 0 ? (
               <Suspense
                 fallback={<Top10Pending title={"Top 10 Watched\nShows"} />}
@@ -99,7 +98,7 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
               title={"Streaming\nServices"}
               unit="show"
             />
-            <YearKindStats stats={review.movies} />
+            <KindWatchPanel stats={review.tv} />
             {review.topMovies.length > 0 ? (
               <Suspense
                 fallback={<Top10Pending title={"Top 10 Watched\nMovies"} />}
@@ -134,6 +133,7 @@ export default async function YearPage({ searchParams }: PageProps<"/year">) {
               title={"Streaming\nServices"}
               unit="movie"
             />
+            <KindWatchPanel stats={review.movies} />
             {review.last ? (
               <Suspense fallback={<MomentPending label="Last play" />}>
                 <YearLastMoment {...art} />

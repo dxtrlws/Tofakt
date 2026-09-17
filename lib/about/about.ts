@@ -21,6 +21,30 @@ export type AboutFacts = {
   events: string;
 };
 
+export type JobRowStatus = "ok" | "error" | "running" | "idle";
+
+export type JobRow = {
+  type: string;
+  stamp: string;
+  duration: string;
+  status: JobRowStatus;
+  summary: string;
+};
+
+export type JobErrorRow = {
+  type: string;
+  stamp: string;
+  message: string;
+};
+
+export type JobStatus = {
+  rows: JobRow[];
+  rate: string;
+  tofa: string;
+  pause: string | null;
+  errors: JobErrorRow[];
+};
+
 export { formatBytes, formatStamp, formatUptime } from "./about-format";
 
 function durationLabel(started: Date | null, finished: Date | null): string {
@@ -107,7 +131,7 @@ function reconcileSummary(): string {
   return "idle";
 }
 
-function jobLine(
+function jobRow(
   type: string,
   row:
     | {
@@ -118,14 +142,22 @@ function jobLine(
     | undefined,
   summary: string,
   tz: string,
-): string {
+): JobRow {
   const at = row?.finishedAt ?? row?.startedAt;
-  const stamp = at ? formatStamp(at, tz) : "never";
-  const status = row?.status === "ok" ? "ok" : row?.status || "idle";
-  return `${type.padEnd(7)}${stamp}  ${durationLabel(row?.startedAt ?? null, row?.finishedAt ?? null)}  ${status}  ${summary}`;
+  const status: JobRowStatus =
+    row?.status === "ok" || row?.status === "error" || row?.status === "running"
+      ? row.status
+      : "idle";
+  return {
+    type,
+    stamp: at ? formatStamp(at, tz) : "never",
+    duration: durationLabel(row?.startedAt ?? null, row?.finishedAt ?? null),
+    status,
+    summary,
+  };
 }
 
-function jobStatusLines(): string[] {
+export function jobStatus(): JobStatus {
   const tz = timezone();
   const ingest = getDb().select().from(jobs).where(eq(jobs.id, "ingest")).get();
   const reconcile = getDb()
@@ -150,38 +182,35 @@ function jobStatusLines(): string[] {
   const claimed = tofa?.serverId ? "claimed" : "unclaimed";
   const api =
     extra.apiVersion != null ? `api ${extra.apiVersion}` : `caps ${capCount}`;
-  const lines = [
-    jobLine("ingest", ingest, ingestSummary(), tz),
-    jobLine("recon", reconcile, reconcileSummary(), tz),
-    jobLine("sync", sync, syncSummary(), tz),
-    `rate   Trakt  ${rate.gets}/${rate.budget}  ${rate.windowMinutes} min window`,
-    `tofa   ${extra.version ?? "—"}  ${api}  ${claimed}`,
-  ];
-  if (circuit.pausedUntil && circuit.pausedUntil > Date.now()) {
-    lines.push(
-      `pause  Trakt writes paused until ${formatStamp(new Date(circuit.pausedUntil), tz)}`,
-    );
-  }
   const errors = getDb()
     .select()
     .from(jobRuns)
     .where(isNotNull(jobRuns.error))
     .orderBy(desc(jobRuns.finishedAt))
     .limit(5)
-    .all();
-  for (const row of errors) {
-    if (!row.error) {
-      continue;
-    }
-    const at = row.finishedAt ?? row.startedAt;
-    lines.push(
-      `error  ${row.type}  ${at ? formatStamp(at, tz) : "—"}  ${row.error}`,
-    );
-  }
-  return lines;
-}
-
-export function jobStatusText(): string {
-  return jobStatusLines().join("\n");
+    .all()
+    .flatMap((row) => {
+      if (!row.error) {
+        return [];
+      }
+      const at = row.finishedAt ?? row.startedAt;
+      return [
+        { type: row.type, stamp: at ? formatStamp(at, tz) : "—", message: row.error },
+      ];
+    });
+  return {
+    rows: [
+      jobRow("ingest", ingest, ingestSummary(), tz),
+      jobRow("recon", reconcile, reconcileSummary(), tz),
+      jobRow("sync", sync, syncSummary(), tz),
+    ],
+    rate: `Trakt ${rate.gets}/${rate.budget} · ${rate.windowMinutes} min window`,
+    tofa: `${extra.version ?? "—"} · ${api} · ${claimed}`,
+    pause:
+      circuit.pausedUntil && circuit.pausedUntil > Date.now()
+        ? `Trakt writes paused until ${formatStamp(new Date(circuit.pausedUntil), tz)}`
+        : null,
+    errors,
+  };
 }
 
